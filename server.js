@@ -202,48 +202,54 @@ async function requireApiKey(req, res, next) {
 // SCRIPT AUTH (users' Lua loaders hit this)
 // ═══════════════════════════════════════════════════════════════════════════════
 app.get("/v1/auth", authLimiter, async (req, res) => {
+    const lua = (msg) => res.set("Content-Type","text/plain").send(`error(${JSON.stringify("Lunex: " + msg)})`);
+
     const { key: userKey, hwid } = req.query;
-    if (!userKey || !hwid)
-        return res.set("Content-Type","text/plain").send(`error("Dragon: Missing key or hwid")`);
+    if (!userKey || !hwid) return lua("Missing key or hwid");
 
-    const { data: keyRow } = await sb.from("keys")
-        .select("*, projects(obfuscated_script, ffa, active, name)")
-        .eq("key_string", userKey).single();
+    // Step 1: look up the key row by itself (no join — avoids null if script missing)
+    const { data: keyRow, error: keyErr } = await sb.from("keys")
+        .select("*").eq("key_string", userKey.trim()).single();
 
-    if (!keyRow)
-        return res.set("Content-Type","text/plain").send(`error("Dragon: Invalid key")`);
-    if (!keyRow.active)
-        return res.set("Content-Type","text/plain").send(`error("Dragon: Key revoked - contact support")`);
+    if (keyErr || !keyRow) return lua("Invalid key");
+    if (!keyRow.active)    return lua("Key revoked — contact support");
     if (keyRow.expires_at && Date.now() / 1000 > keyRow.expires_at)
-        return res.set("Content-Type","text/plain").send(`error("Dragon: Key expired")`);
+        return lua("Key expired — contact support");
 
-    // HWID handling
+    // Step 2: HWID lock
+    const now = new Date().toISOString();
     if (!keyRow.hwid) {
-        // key_days: start timer on first run
+        // First run — lock HWID, start key_days timer if set
         const expires_at = keyRow.key_days
             ? Math.floor(Date.now() / 1000) + keyRow.key_days * 86400
-            : null;
+            : keyRow.expires_at;
         await sb.from("keys").update({
-            hwid, total_executions: 1,
-            last_exec: new Date().toISOString(),
-            ...(expires_at ? { expires_at } : {})
+            hwid,
+            total_executions: 1,
+            last_exec: now,
+            ...(expires_at !== keyRow.expires_at ? { expires_at } : {})
         }).eq("id", keyRow.id);
     } else if (keyRow.hwid !== hwid) {
-        return res.set("Content-Type","text/plain").send(`error("Dragon: HWID mismatch - run /resethwid in our Discord")`);
+        return lua("HWID mismatch — run /reset-hwid in our Discord");
     } else {
         await sb.from("keys").update({
             total_executions: (keyRow.total_executions || 0) + 1,
-            last_exec: new Date().toISOString()
+            last_exec: now
         }).eq("id", keyRow.id);
     }
 
-    const project = keyRow.projects;
-    if (!project?.active)
-        return res.set("Content-Type","text/plain").send(`error("Dragon: Script is offline")`);
+    // Step 3: fetch project separately
+    if (!keyRow.project_id) return lua("Key has no project assigned");
+    const { data: project } = await sb.from("projects")
+        .select("obfuscated_script, active, name, ffa")
+        .eq("id", keyRow.project_id).single();
+
+    if (!project)          return lua("Project not found");
+    if (!project.active)   return lua("Script is currently offline");
+    if (!project.ffa && !keyRow.hwid && !hwid) return lua("Not whitelisted");
 
     const script = project.obfuscated_script;
-    if (!script || script.trim() === "")
-        return res.set("Content-Type","text/plain").send(`error("Dragon: No script uploaded yet")`);
+    if (!script || script.trim() === "") return lua("No script uploaded yet — contact the developer");
 
     res.set("Content-Type", "text/plain");
     res.send(script);
