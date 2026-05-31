@@ -198,6 +198,30 @@ async function requireApiKey(req, res, next) {
     next();
 }
 
+
+// ── DEBUG endpoint (remove after fixing) ─────────────────────────────────────
+app.get("/debug", async (req, res) => {
+    const info = {
+        supabase_url_set:  !!process.env.SUPABASE_URL,
+        supabase_key_set:  !!process.env.SUPABASE_SERVICE_KEY,
+        master_secret_set: !!process.env.MASTER_SECRET,
+        railway_domain:    process.env.RAILWAY_PUBLIC_DOMAIN || "not set",
+        node_version:      process.version,
+    };
+    // Test Supabase connection
+    try {
+        const { data, error } = await sb.from("owners").select("id, email, plan").limit(3);
+        info.supabase_connected = !error;
+        info.supabase_error     = error?.message || null;
+        info.owners_found       = data?.length || 0;
+        info.owners             = data?.map(o => ({ email: o.email, plan: o.plan })) || [];
+    } catch(e) {
+        info.supabase_connected = false;
+        info.supabase_error     = e.message;
+    }
+    res.json(info);
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // SCRIPT AUTH (users' Lua loaders hit this)
 // ═══════════════════════════════════════════════════════════════════════════════
