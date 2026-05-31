@@ -2,260 +2,222 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Luamor Dashboard</title>
+<title>Lunex — Whitelist Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg:       #0b0e14;
-  --card:     #111520;
-  --raised:   #181d2a;
-  --border:   #1e2535;
-  --border2:  #252d3d;
-  --acc:      #3b82f6;
-  --acc2:     #2563eb;
-  --acc-glow: rgba(59,130,246,0.15);
-  --grn:      #22c55e;
-  --grn-bg:   rgba(34,197,94,0.1);
-  --red:      #ef4444;
-  --red-bg:   rgba(239,68,68,0.1);
-  --yel:      #f59e0b;
-  --yel-bg:   rgba(245,158,11,0.1);
-  --pur:      #a855f7;
-  --pur-bg:   rgba(168,85,247,0.1);
-  --txt:      #e2e8f0;
-  --sub:      #64748b;
-  --dim:      #334155;
-  --sidebar-w: 220px;
+:root{
+  --bg:#080b10;--card:#0e1218;--raised:#141b24;--border:#1c2534;--border2:#243042;
+  --acc:#6366f1;--acc2:#4f46e5;--acc-g:rgba(99,102,241,.12);
+  --grn:#10b981;--grn-g:rgba(16,185,129,.1);
+  --red:#f43f5e;--red-g:rgba(244,63,94,.1);
+  --yel:#f59e0b;--yel-g:rgba(245,158,11,.1);
+  --pur:#8b5cf6;--pur-g:rgba(139,92,246,.1);
+  --cya:#06b6d4;--cya-g:rgba(6,182,212,.1);
+  --txt:#e2e8f0;--sub:#64748b;--dim:#1e293b;
+  --sw:220px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif;min-height:100vh;display:flex;overflow-x:hidden}
+body{background:var(--bg);color:var(--txt);font-family:'Inter',sans-serif;min-height:100vh;display:flex;overflow-x:hidden}
+.hidden{display:none!important}
+.flex{display:flex;gap:8px;align-items:center}.grow{flex:1}
+.mono{font-family:'JetBrains Mono',monospace}
+code{background:var(--raised);border:1px solid var(--border);padding:1px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sub)}
 
-/* ── SIDEBAR ── */
-#sidebar {
-  width:var(--sidebar-w);min-width:var(--sidebar-w);height:100vh;position:fixed;left:0;top:0;
-  background:var(--card);border-right:1px solid var(--border);
-  display:flex;flex-direction:column;z-index:50;
-}
-.sidebar-logo {
-  padding:20px 20px 16px;border-bottom:1px solid var(--border);
-  display:flex;align-items:center;gap:10px;
-}
-.sidebar-logo-icon {
-  width:32px;height:32px;background:linear-gradient(135deg,#3b82f6,#a855f7);
-  border-radius:8px;display:flex;align-items:center;justify-content:center;
-  font-size:16px;flex-shrink:0;
-}
-.sidebar-logo-text{font-size:16px;font-weight:700;letter-spacing:-.3px}
-.sidebar-nav{padding:12px 10px;flex:1;display:flex;flex-direction:column;gap:2px}
-.nav-item {
-  display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;
-  cursor:pointer;font-size:13px;font-weight:500;color:var(--sub);
-  transition:.15s;text-decoration:none;user-select:none;
-}
+/* LOGIN */
+#loginWrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:999}
+#loginWrap::before{content:'';position:absolute;width:500px;height:500px;background:radial-gradient(circle,rgba(99,102,241,.08),transparent 70%);left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none}
+.login-box{background:var(--card);border:1px solid var(--border2);border-radius:18px;padding:40px;width:380px;position:relative;z-index:1}
+.login-logo{width:44px;height:44px;background:linear-gradient(135deg,var(--acc),var(--pur));border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:22px}
+.login-title{font-size:20px;font-weight:800;margin-bottom:6px}
+.login-sub{font-size:13px;color:var(--sub);margin-bottom:24px;line-height:1.5}
+
+/* SIDEBAR */
+#sidebar{width:var(--sw);min-width:var(--sw);height:100vh;position:fixed;left:0;top:0;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:50}
+.sb-brand{padding:18px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sb-brand-icon{width:30px;height:30px;background:linear-gradient(135deg,var(--acc),var(--pur));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.sb-brand-name{font-size:15px;font-weight:800;letter-spacing:-.3px}
+.sb-brand-badge{font-size:9px;background:var(--acc-g);color:var(--acc);padding:1px 6px;border-radius:10px;font-weight:700;border:1px solid rgba(99,102,241,.25)}
+.sb-nav{padding:10px 8px;flex:1;display:flex;flex-direction:column;gap:1px}
+.sb-section{font-size:9px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;padding:10px 10px 4px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--sub);transition:.12s;user-select:none}
 .nav-item:hover{background:var(--raised);color:var(--txt)}
-.nav-item.active{background:var(--acc-glow);color:var(--acc);border:1px solid rgba(59,130,246,0.2)}
-.nav-item.active .nav-icon{color:var(--acc)}
-.nav-icon{font-size:15px;width:18px;text-align:center;flex-shrink:0}
-.nav-section{font-size:10px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.8px;padding:12px 12px 4px}
-.sidebar-bottom{padding:12px 10px;border-top:1px solid var(--border)}
-.user-pill{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--raised);border:1px solid var(--border)}
-.user-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#a855f7);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
-.user-info{flex:1;min-width:0}
-.user-email{font-size:11px;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.user-plan{font-size:10px;color:var(--sub)}
+.nav-item.active{background:var(--acc-g);color:var(--acc);border:1px solid rgba(99,102,241,.2)}
+.nav-icon{font-size:14px;width:16px;text-align:center;flex-shrink:0}
+.sb-footer{padding:10px 8px;border-top:1px solid var(--border)}
+.user-chip{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;background:var(--raised);border:1px solid var(--border)}
+.user-av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--pur));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.user-email{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-plan{font-size:9px;color:var(--sub);text-transform:uppercase;font-weight:700;margin-top:1px}
 
-/* ── MAIN ── */
-#main{margin-left:var(--sidebar-w);flex:1;min-height:100vh;display:flex;flex-direction:column}
-.topbar{height:56px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:12px;background:var(--card);position:sticky;top:0;z-index:40}
-.topbar-title{font-size:15px;font-weight:700;flex:1}
-.topbar-breadcrumb{font-size:13px;color:var(--sub)}
-.topbar-breadcrumb span{color:var(--txt);font-weight:600}
-.page-content{padding:28px;flex:1}
+/* MAIN */
+#main{margin-left:var(--sw);flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{height:52px;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:10px;position:sticky;top:0;z-index:40}
+.tb-bc{font-size:12px;color:var(--sub)}.tb-bc b{color:var(--txt);font-weight:600}
+.content{padding:24px;flex:1}
 
-/* ── PAGES ── */
+/* PAGES */
 .page{display:none}.page.active{display:block}
+.pg-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+.pg-title{font-size:18px;font-weight:800}
+.pg-sub{font-size:13px;color:var(--sub);margin-top:3px}
 
-/* ── STAT CARDS ── */
-.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px}
-.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px;transition:.15s}
+/* STAT GRID */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:22px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:14px;transition:.12s;cursor:default}
 .stat-card:hover{border-color:var(--border2)}
-.stat-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-.stat-icon.green{background:var(--grn-bg)}
-.stat-icon.blue{background:var(--acc-glow)}
-.stat-icon.purple{background:var(--pur-bg)}
-.stat-icon.red{background:var(--red-bg)}
-.stat-icon.yellow{background:var(--yel-bg)}
-.stat-body{}
-.stat-val{font-size:22px;font-weight:700;line-height:1}
-.stat-lbl{font-size:11px;color:var(--sub);margin-top:3px;font-weight:500}
-.stat-sub{font-size:11px;color:var(--sub);margin-top:6px}
-.prog-bar{height:4px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden}
-.prog-fill{height:100%;border-radius:2px;transition:width .4s}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.stat-ico.purple{background:var(--pur-g)}
+.stat-ico.blue{background:var(--acc-g)}
+.stat-ico.green{background:var(--grn-g)}
+.stat-ico.yellow{background:var(--yel-g)}
+.stat-ico.cyan{background:var(--cya-g)}
+.stat-v{font-size:24px;font-weight:800;line-height:1}
+.stat-l{font-size:11px;color:var(--sub);margin-top:3px;font-weight:500;text-transform:uppercase;letter-spacing:.4px}
+.stat-prog{height:3px;background:var(--dim);border-radius:2px;margin-top:10px;overflow:hidden}
+.stat-fill{height:100%;border-radius:2px;transition:width .5s}
 
-/* ── PROJECT CARDS ── */
-.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-.section-title{font-size:14px;font-weight:700}
-.project-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:12px;transition:.15s}
-.project-card:hover{border-color:var(--border2)}
-.project-header{display:flex;align-items:center;gap:14px;margin-bottom:14px}
-.project-icon{width:36px;height:36px;border-radius:8px;background:var(--red-bg);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-.project-name{font-size:14px;font-weight:700}
-.project-id{font-size:11px;color:var(--sub);font-family:'DM Mono',monospace;margin-top:2px}
-.project-actions{margin-left:auto;display:flex;gap:8px}
-.scripts-table{width:100%;border-collapse:collapse}
-.scripts-table th{text-align:left;font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;padding:8px 10px;border-bottom:1px solid var(--border)}
-.scripts-table td{padding:10px;border-bottom:1px solid var(--border);font-size:13px}
-.scripts-table tr:last-child td{border-bottom:none}
-.scripts-table tr:hover td{background:var(--raised)}
-.toggle{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
-.toggle-track{width:32px;height:18px;border-radius:9px;background:var(--border2);position:relative;transition:.2s}
-.toggle-track.on{background:var(--grn)}
-.toggle-knob{width:13px;height:13px;border-radius:50%;background:#fff;position:absolute;top:2.5px;left:2.5px;transition:.2s}
-.toggle-track.on .toggle-knob{left:16.5px}
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+.card-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:14px;font-weight:700}
 
-/* ── BADGES ── */
-.badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.3px}
-.badge-green{background:var(--grn-bg);color:var(--grn)}
-.badge-red{background:var(--red-bg);color:var(--red)}
-.badge-blue{background:var(--acc-glow);color:var(--acc)}
-.badge-purple{background:var(--pur-bg);color:var(--pur)}
-.badge-yellow{background:var(--yel-bg);color:var(--yel)}
+/* PROJECT CARD */
+.proj-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:12px;transition:.12s}
+.proj-card:hover{border-color:var(--border2)}
+.proj-hd{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.proj-icon{width:34px;height:34px;border-radius:9px;background:var(--acc-g);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.proj-name{font-size:14px;font-weight:700}
+.proj-id{font-size:10px;color:var(--sub);font-family:'JetBrains Mono',monospace;margin-top:2px}
+.proj-acts{margin-left:auto;display:flex;gap:6px}
 
-/* ── BUTTONS ── */
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;transition:.15s;white-space:nowrap}
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;font-size:10px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.6px;padding:8px 10px;border-bottom:1px solid var(--border)}
+.tbl td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tbody tr:hover td{background:var(--raised)}
+.tbl-wrap{overflow-x:auto}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.3px}
+.badge-green{background:var(--grn-g);color:var(--grn)}
+.badge-red{background:var(--red-g);color:var(--red)}
+.badge-blue{background:var(--acc-g);color:var(--acc)}
+.badge-purple{background:var(--pur-g);color:var(--pur)}
+.badge-yellow{background:var(--yel-g);color:var(--yel)}
+.badge-cyan{background:var(--cya-g);color:var(--cya)}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;font-family:'Inter',sans-serif;transition:.12s;white-space:nowrap}
 .btn-primary{background:var(--acc);color:#fff}.btn-primary:hover{background:var(--acc2)}
 .btn-green{background:var(--grn);color:#fff}.btn-green:hover{filter:brightness(1.1)}
 .btn-red{background:var(--red);color:#fff}.btn-red:hover{filter:brightness(1.1)}
-.btn-ghost{background:var(--raised);color:var(--txt);border:1px solid var(--border)}.btn-ghost:hover{border-color:var(--border2);background:var(--border)}
-.btn-sm{padding:5px 12px;font-size:12px}
-.btn-icon{padding:6px 10px;font-size:14px}
+.btn-ghost{background:var(--raised);color:var(--txt);border:1px solid var(--border)}.btn-ghost:hover{border-color:var(--border2)}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-icon{padding:6px 8px}
 
-/* ── TABLE (users) ── */
-.data-table{width:100%;border-collapse:collapse}
-.data-table th{text-align:left;font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;padding:10px 14px;border-bottom:1px solid var(--border)}
-.data-table td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:13px}
-.data-table tr:last-child td{border-bottom:none}
-.data-table tbody tr:hover td{background:var(--raised)}
-.key-mono{font-family:'DM Mono',monospace;font-size:12px;color:var(--txt)}
-.key-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--sub)}
-.user-key-cell{display:flex;flex-direction:column;gap:2px}
+/* FORMS */
+.fg{margin-bottom:13px}
+.lbl{display:block;font-size:10px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px}
+.inp{background:var(--raised);border:1px solid var(--border);color:var(--txt);padding:8px 12px;border-radius:8px;width:100%;font-size:13px;outline:none;font-family:'Inter',sans-serif;transition:.12s}
+.inp:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-g)}
+.inp::placeholder{color:var(--sub)}
+textarea.inp{resize:vertical;min-height:80px}
 
-/* ── CARD ── */
-.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
-.card-title{font-size:14px;font-weight:700;margin-bottom:16px}
+/* MODAL */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(6px)}
+.modal-ov.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border2);border-radius:16px;padding:26px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:0 32px 64px rgba(0,0,0,.5);position:relative}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.modal-title{font-size:15px;font-weight:800}
+.modal-x{background:var(--raised);border:1px solid var(--border);color:var(--sub);width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:.12s}
+.modal-x:hover{color:var(--txt);border-color:var(--border2)}
+.modal-info{background:var(--raised);border:1px solid var(--border);border-radius:8px;padding:10px 13px;font-size:12px;color:var(--sub);margin-bottom:14px;line-height:1.6}
 
-/* ── FORM ── */
-.form-group{margin-bottom:14px}
-label.lbl{display:block;font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
-input.inp,textarea.inp,select.inp{background:var(--raised);border:1px solid var(--border);color:var(--txt);padding:9px 13px;border-radius:8px;width:100%;font-size:13px;outline:none;font-family:'DM Sans',sans-serif;transition:.15s}
-input.inp:focus,textarea.inp:focus,select.inp:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-glow)}
-input.inp::placeholder,textarea.inp::placeholder{color:var(--sub)}
+/* TOGGLE */
+.tog-track{width:30px;height:17px;border-radius:9px;background:var(--dim);position:relative;transition:.2s;cursor:pointer;flex-shrink:0}
+.tog-track.on{background:var(--grn)}
+.tog-knob{width:12px;height:12px;border-radius:50%;background:#fff;position:absolute;top:2.5px;left:2.5px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.tog-track.on .tog-knob{left:15.5px}
 
-/* ── MODAL ── */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(4px)}
-.modal-overlay.open{display:flex}
-.modal{background:var(--card);border:1px solid var(--border2);border-radius:16px;padding:28px;width:100%;max-width:480px;position:relative;max-height:90vh;overflow-y:auto;box-shadow:0 24px 48px rgba(0,0,0,.4)}
-.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
-.modal-title{font-size:16px;font-weight:700}
-.modal-close{background:var(--raised);border:1px solid var(--border);color:var(--sub);width:30px;height:30px;border-radius:7px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:.15s}
-.modal-close:hover{color:var(--txt);border-color:var(--border2)}
-.modal-info{background:var(--raised);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-size:12px;color:var(--sub);margin-bottom:16px;line-height:1.6}
-.modal-info strong{color:var(--txt)}
-
-/* ── CHART ── */
-.chart-area{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:24px}
-.chart-title{font-size:13px;font-weight:700;margin-bottom:4px}
-.chart-sub{font-size:12px;color:var(--sub);margin-bottom:16px}
-.chart-bars{display:flex;align-items:flex-end;gap:6px;height:80px}
-.chart-bar{flex:1;background:var(--acc-glow);border-radius:4px 4px 0 0;min-height:4px;transition:.3s;cursor:pointer;position:relative}
-.chart-bar:hover{background:var(--acc)}
-
-/* ── ACCOUNT ── */
-.account-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-.detail-row{display:flex;flex-direction:column;gap:3px;padding:10px 0;border-bottom:1px solid var(--border)}
-.detail-row:last-child{border-bottom:none}
-.detail-lbl{font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.5px}
-.detail-val{font-size:13px;font-weight:500}
-.api-key-row{display:flex;align-items:center;gap:8px;margin-top:4px}
-.api-key-val{font-family:'DM Mono',monospace;font-size:12px;background:var(--raised);border:1px solid var(--border);padding:6px 10px;border-radius:6px;flex:1;color:var(--sub);letter-spacing:.5px}
-
-/* ── TOASTS ── */
-#toasts{position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:8px;z-index:999}
-.toast{background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:12px 18px;font-size:13px;font-weight:600;min-width:240px;animation:toastIn .2s;display:flex;align-items:center;gap:8px}
+/* TOASTS */
+#toasts{position:fixed;bottom:22px;right:22px;display:flex;flex-direction:column;gap:7px;z-index:9999}
+.toast{background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:11px 16px;font-size:12px;font-weight:600;min-width:220px;animation:tIn .2s;display:flex;align-items:center;gap:8px}
 .toast.ok{border-left:3px solid var(--grn)}.toast.err{border-left:3px solid var(--red)}.toast.info{border-left:3px solid var(--acc)}
-@keyframes toastIn{from{transform:translateX(60px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes tIn{from{transform:translateX(50px);opacity:0}to{transform:translateX(0);opacity:1}}
 
-/* ── LOGIN ── */
-#loginScreen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000}
-.login-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%, rgba(59,130,246,0.08) 0%,transparent 60%),radial-gradient(ellipse at 70% 30%, rgba(168,85,247,0.06) 0%,transparent 60%)}
-.login-card{background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:40px;width:100%;max-width:420px;position:relative;z-index:1;box-shadow:0 32px 64px rgba(0,0,0,.4)}
-.login-icon{width:48px;height:48px;background:linear-gradient(135deg,#3b82f6,#a855f7);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:20px}
-.login-title{font-size:22px;font-weight:700;margin-bottom:6px}
-.login-sub{font-size:13px;color:var(--sub);margin-bottom:28px}
-.hidden{display:none!important}
-.flex{display:flex;gap:8px;align-items:center}.grow{flex:1}
-.sep{height:1px;background:var(--border);margin:16px 0}
-.code{font-family:'DM Mono',monospace;background:var(--raised);padding:2px 7px;border-radius:5px;font-size:12px}
-.days-green{color:var(--grn);font-weight:600}
-.days-yellow{color:var(--yel);font-weight:600}
-.days-red{color:var(--red);font-weight:600}
+/* LOADER PREVIEW */
+.loader-pre{background:var(--raised);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.7;word-break:break-all;position:relative;color:var(--cya)}
+
+/* PROGRESS RING */
+.ring-wrap{display:flex;align-items:center;justify-content:center;flex-direction:column;padding:16px}
+.ring{width:80px;height:80px}
+.ring-circle{fill:none;stroke:var(--border2);stroke-width:6}
+.ring-prog{fill:none;stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset .5s;transform:rotate(-90deg);transform-origin:50% 50%}
+
+/* DETAIL ROW */
+.det-row{padding:10px 0;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:3px}
+.det-row:last-child{border-bottom:none}
+.det-lbl{font-size:10px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.5px}
+.det-val{font-size:13px;font-weight:500}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:48px 20px;color:var(--sub)}
+.empty-icon{font-size:36px;margin-bottom:12px}
+.empty-title{font-size:14px;font-weight:700;color:var(--txt);margin-bottom:6px}
+.empty-sub{font-size:12px;line-height:1.6}
+
+/* SEARCH */
 .search-row{display:flex;gap:8px;margin-bottom:14px}
-.pagination{display:flex;align-items:center;gap:8px;margin-top:14px;justify-content:flex-end;font-size:13px;color:var(--sub)}
-.pg-btn{background:var(--raised);border:1px solid var(--border);color:var(--txt);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px}
-.pg-btn:hover{border-color:var(--acc)}
+.filter-tabs{display:flex;gap:4px;background:var(--raised);padding:3px;border-radius:8px;border:1px solid var(--border)}
+.ftab{padding:4px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;color:var(--sub);transition:.12s}
+.ftab.active{background:var(--card);color:var(--txt)}
+
+/* KEY CHIP */
+.key-chip{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--raised);border:1px solid var(--border);padding:3px 8px;border-radius:5px;display:inline-block}
+.key-chip-sm{font-size:9px;color:var(--sub)}
 </style>
 </head>
 <body>
 
 <!-- LOGIN -->
-<div id="loginScreen">
-  <div class="login-bg"></div>
-  <div class="login-card">
-    <div class="login-icon">🛡</div>
-    <div class="login-title">Log in with API key</div>
-    <div class="login-sub">Paste your API key to access the dashboard.</div>
-    <div class="form-group">
+<div id="loginWrap">
+  <div class="login-box">
+    <div class="login-logo">⚡</div>
+    <div class="login-title">Welcome to Lunex</div>
+    <div class="login-sub">Enter your API key to access your whitelist dashboard.</div>
+    <div class="fg">
       <label class="lbl">API Key</label>
-      <input class="inp" id="apiKeyInput" type="password" placeholder="Paste your key here..." autocomplete="off"/>
+      <input class="inp" id="loginKey" type="password" placeholder="Paste your API key..." autocomplete="off"/>
     </div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px" onclick="doLogin()">
-      ⟶ &nbsp;Log in
-    </button>
+    <div id="loginErr" class="hidden" style="color:var(--red);font-size:12px;margin-bottom:10px"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" onclick="doLogin()">Log in →</button>
   </div>
 </div>
 
 <!-- SIDEBAR -->
 <div id="sidebar">
-  <div class="sidebar-logo">
-    <div class="sidebar-logo-icon">🛡</div>
-    <div class="sidebar-logo-text">Luamor</div>
+  <div class="sb-brand">
+    <div class="sb-brand-icon">⚡</div>
+    <div class="sb-brand-name">Lunex</div>
+    <div class="sb-brand-badge">BETA</div>
   </div>
-  <div class="sidebar-nav">
-    <div class="nav-section">Main</div>
-    <div class="nav-item active" onclick="showPage('dashboard',this)" data-page="dashboard">
-      <span class="nav-icon">📊</span> Dashboard
-    </div>
-    <div class="nav-item" onclick="showPage('projects',this)" data-page="projects">
-      <span class="nav-icon">📁</span> Projects
-    </div>
-    <div class="nav-item" onclick="showPage('users',this)" data-page="users">
-      <span class="nav-icon">👥</span> Users
-    </div>
-    <div class="nav-section">Account</div>
-    <div class="nav-item" onclick="showPage('account',this)" data-page="account">
-      <span class="nav-icon">👤</span> Profile
-    </div>
-    <div class="nav-item" onclick="logout()" style="color:var(--red)">
-      <span class="nav-icon">🚪</span> Log out
-    </div>
+  <div class="sb-nav">
+    <div class="sb-section">Overview</div>
+    <div class="nav-item active" onclick="showPage('dashboard',this)"><span class="nav-icon">⊞</span>Dashboard</div>
+    <div class="nav-item" onclick="showPage('projects',this)"><span class="nav-icon">◈</span>Projects</div>
+    <div class="nav-item" onclick="showPage('users',this)"><span class="nav-icon">⊙</span>Users</div>
+    <div class="sb-section">Account</div>
+    <div class="nav-item" onclick="showPage('account',this)"><span class="nav-icon">◉</span>Account</div>
+    <div class="nav-item" onclick="logout()" style="color:var(--red);margin-top:4px"><span class="nav-icon">↩</span>Logout</div>
   </div>
-  <div class="sidebar-bottom">
-    <div class="user-pill">
-      <div class="user-avatar" id="sidebarAvatar">?</div>
-      <div class="user-info">
-        <div class="user-email" id="sidebarEmail">Loading...</div>
-        <div class="user-plan" id="sidebarPlan">—</div>
+  <div class="sb-footer">
+    <div class="user-chip">
+      <div class="user-av" id="sbAv">?</div>
+      <div style="flex:1;min-width:0">
+        <div class="user-email" id="sbEmail">Loading...</div>
+        <div class="user-plan" id="sbPlan">—</div>
       </div>
     </div>
   </div>
@@ -264,177 +226,183 @@ input.inp::placeholder,textarea.inp::placeholder{color:var(--sub)}
 <!-- MAIN -->
 <div id="main">
   <div class="topbar">
-    <div class="topbar-breadcrumb">Luamor / <span id="topbarTitle">Dashboard</span></div>
+    <div class="tb-bc flex" style="font-size:12px">Lunex / <b id="tbTitle">Dashboard</b></div>
     <div style="flex:1"></div>
-    <div id="topbarUser" style="font-size:12px;color:var(--sub)"></div>
+    <div style="font-size:11px;color:var(--sub)" id="tbUser"></div>
   </div>
+  <div class="content">
 
-  <div class="page-content">
-
-    <!-- DASHBOARD -->
-    <div id="page-dashboard" class="page active">
-      <div class="stats-row">
-        <div class="stat-card">
-          <div class="stat-icon green">📝</div>
-          <div class="stat-body">
-            <div class="stat-val" id="s-projects">—</div>
-            <div class="stat-lbl">Total Scripts</div>
-            <div class="prog-bar"><div class="prog-fill" id="prog-scripts" style="background:var(--grn);width:0%"></div></div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon blue">👥</div>
-          <div class="stat-body">
-            <div class="stat-val" id="s-users">—</div>
-            <div class="stat-lbl">Total Users</div>
-            <div class="prog-bar"><div class="prog-fill" id="prog-users" style="background:var(--acc);width:0%"></div></div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon purple">🔒</div>
-          <div class="stat-body">
-            <div class="stat-val" id="s-obfs">—</div>
-            <div class="stat-lbl">Monthly Obfuscations</div>
-            <div class="stat-sub" id="s-obfs-reset"></div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon yellow">⚡</div>
-          <div class="stat-body">
-            <div class="stat-val" id="s-execs">—</div>
-            <div class="stat-lbl">Total Executions</div>
-            <div class="stat-sub">This month</div>
-          </div>
-        </div>
+    <!-- DASHBOARD PAGE -->
+    <div class="page active" id="page-dashboard">
+      <div class="pg-header">
+        <div><div class="pg-title">Dashboard</div><div class="pg-sub">Welcome back 👋</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="refreshAll()">↻ Refresh</button>
       </div>
-      <div class="chart-area">
-        <div class="chart-title">Executions</div>
-        <div class="chart-sub">Script execution activity over time</div>
-        <div class="chart-bars" id="chartBars">
-          <!-- generated by JS -->
-        </div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-ico purple">◈</div><div style="flex:1"><div class="stat-v" id="s1">—</div><div class="stat-l">Projects</div><div class="stat-prog"><div class="stat-fill" id="sf1" style="background:var(--pur)"></div></div></div></div>
+        <div class="stat-card"><div class="stat-ico blue">⊙</div><div style="flex:1"><div class="stat-v" id="s2">—</div><div class="stat-l">Total Users</div><div class="stat-prog"><div class="stat-fill" id="sf2" style="background:var(--acc)"></div></div></div></div>
+        <div class="stat-card"><div class="stat-ico green">⚡</div><div style="flex:1"><div class="stat-v" id="s3">—</div><div class="stat-l">Executions</div><div class="stat-prog"><div class="stat-fill" id="sf3" style="background:var(--grn)"></div></div></div></div>
+        <div class="stat-card"><div class="stat-ico yellow">🔒</div><div style="flex:1"><div class="stat-v" id="s4">—</div><div class="stat-l">Obfs This Month</div><div class="stat-prog"><div class="stat-fill" id="sf4" style="background:var(--yel)"></div></div></div></div>
+      </div>
+      <div class="card"><div class="card-hd"><div class="card-title">Recent Activity</div></div>
+        <div id="recentActivity" style="color:var(--sub);font-size:13px;padding:16px 0;text-align:center">No recent activity — run a script to see data here.</div>
       </div>
     </div>
 
-    <!-- PROJECTS -->
-    <div id="page-projects" class="page">
-      <div class="section-header">
-        <div class="section-title">Projects</div>
-        <button class="btn btn-primary" onclick="openModal('newProject')">+ Create Project</button>
+    <!-- PROJECTS PAGE -->
+    <div class="page" id="page-projects">
+      <div class="pg-header">
+        <div><div class="pg-title">Projects</div><div class="pg-sub">Manage your scripts and loaders</div></div>
+        <button class="btn btn-primary" onclick="openModal('create-project')">+ New Project</button>
       </div>
-      <div id="projectsList"></div>
+      <div id="projectsList"><div class="empty"><div class="empty-icon">◈</div><div class="empty-title">No projects yet</div><div class="empty-sub">Create a project to get started</div></div></div>
     </div>
 
-    <!-- USERS -->
-    <div id="page-users" class="page">
-      <div id="userProjectTabs" style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap"></div>
-      <div id="userProjectPanel"></div>
+    <!-- USERS PAGE -->
+    <div class="page" id="page-users">
+      <div class="pg-header">
+        <div><div class="pg-title">Users</div><div class="pg-sub">Manage keys and access</div></div>
+        <div class="flex gap-8">
+          <button class="btn btn-primary" onclick="openAddUser()">+ Add User</button>
+          <button class="btn btn-ghost" onclick="openModal('mass-gen')">⚡ Mass Generate</button>
+        </div>
+      </div>
+      <div id="userProjectTabs" class="flex" style="gap:6px;margin-bottom:16px;flex-wrap:wrap"></div>
+      <div id="userPanel"><div class="empty"><div class="empty-icon">⊙</div><div class="empty-title">Select a project</div><div class="empty-sub">Choose a project above to view its users</div></div></div>
     </div>
 
-    <!-- ACCOUNT -->
-    <div id="page-account" class="page">
-      <div class="account-grid">
+    <!-- ACCOUNT PAGE -->
+    <div class="page" id="page-account">
+      <div class="pg-header"><div><div class="pg-title">Account</div><div class="pg-sub">Your API credentials and plan</div></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
         <div class="card">
-          <div class="card-title">Account Details</div>
-          <div id="accountDetails">
-            <div class="detail-row"><div class="detail-lbl">Email</div><div class="detail-val" id="acc-email">—</div></div>
-            <div class="detail-row"><div class="detail-lbl">Plan</div><div class="detail-val" id="acc-plan">—</div></div>
-            <div class="detail-row"><div class="detail-lbl">Member Since</div><div class="detail-val" id="acc-created">—</div></div>
-            <div class="detail-row">
-              <div class="detail-lbl">API Key</div>
-              <div class="api-key-row">
-                <div class="api-key-val" id="acc-apikey">••••••••••••••••••••••••</div>
-                <button class="btn btn-ghost btn-sm" onclick="toggleApiKey()">Show</button>
-                <button class="btn btn-ghost btn-sm" onclick="copyApiKey()">Copy</button>
-              </div>
+          <div class="card-title" style="margin-bottom:14px">Profile</div>
+          <div class="det-row"><div class="det-lbl">Email</div><div class="det-val" id="ac-email">—</div></div>
+          <div class="det-row"><div class="det-lbl">Plan</div><div class="det-val" id="ac-plan">—</div></div>
+          <div class="det-row"><div class="det-lbl">Member Since</div><div class="det-val" id="ac-since">—</div></div>
+          <div class="det-row">
+            <div class="det-lbl">API Key</div>
+            <div class="flex" style="margin-top:4px">
+              <input class="inp mono" id="ac-key" type="password" value="" readonly style="font-size:11px"/>
+              <button class="btn btn-ghost btn-sm" onclick="toggleKey()">Show</button>
+              <button class="btn btn-ghost btn-sm" onclick="copyApiKey()">Copy</button>
             </div>
           </div>
         </div>
         <div class="card">
-          <div class="card-title">Statistics</div>
-          <div id="accStats">
-            <div class="detail-row"><div class="detail-lbl">Total Projects</div><div class="detail-val" id="acc-s-projects">—</div></div>
-            <div class="detail-row"><div class="detail-lbl">Total Keys</div><div class="detail-val" id="acc-s-keys">—</div></div>
-            <div class="detail-row"><div class="detail-lbl">Total Executions</div><div class="detail-val" id="acc-s-execs">—</div></div>
-            <div class="detail-row"><div class="detail-lbl">Obfuscations Used</div><div class="detail-val" id="acc-s-obfs">—</div></div>
-          </div>
+          <div class="card-title" style="margin-bottom:14px">Statistics</div>
+          <div class="det-row"><div class="det-lbl">Total Projects</div><div class="det-val" id="ac-s1">—</div></div>
+          <div class="det-row"><div class="det-lbl">Total Keys</div><div class="det-val" id="ac-s2">—</div></div>
+          <div class="det-row"><div class="det-lbl">Total Executions</div><div class="det-val" id="ac-s3">—</div></div>
+          <div class="det-row"><div class="det-lbl">Obfuscations Used</div><div class="det-val" id="ac-s4">—</div></div>
         </div>
       </div>
     </div>
 
-  </div><!-- end page-content -->
-</div><!-- end main -->
+  </div>
+</div>
 
 <!-- MODALS -->
-<div id="modalOverlay" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+<div class="modal-ov" id="modalOv" onclick="if(event.target===this)closeModal()">
 
-  <!-- New Project -->
-  <div id="modal-newProject" class="modal hidden">
-    <div class="modal-header">
-      <div class="modal-title">Create Project</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
+  <!-- CREATE PROJECT -->
+  <div class="modal hidden" id="modal-create-project">
+    <div class="modal-hd"><div class="modal-title">Create Project</div><button class="modal-x" onclick="closeModal()">×</button></div>
+    <div class="fg"><label class="lbl">Project Name</label><input class="inp" id="cp-name" placeholder="e.g. Dragon Hub"/></div>
+    <div class="fg">
+      <label class="lbl">Script Source <span style="color:var(--sub)">(optional — can upload later)</span></label>
+      <textarea class="inp mono" id="cp-src" rows="10" placeholder="-- paste your Lua script here&#10;print('hello from Lunex!')"></textarea>
     </div>
-    <div class="form-group"><label class="lbl">Project Name</label><input class="inp" id="np-name" placeholder="My Script Hub"/></div>
-    <div class="form-group">
+    <div class="fg">
+      <label class="lbl">Obfuscation Level</label>
+      <select class="inp" id="cp-level"><option value="full">Full (Recommended)</option><option value="light">Light</option></select>
+    </div>
+    <div class="flex" style="gap:8px">
+      <button class="btn btn-ghost grow" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary grow" onclick="createProject()">Create Project</button>
+    </div>
+  </div>
+
+  <!-- UPLOAD SCRIPT (for existing project) -->
+  <div class="modal hidden" id="modal-upload-script">
+    <div class="modal-hd"><div class="modal-title">Upload Script</div><button class="modal-x" onclick="closeModal()">×</button></div>
+    <div class="modal-info">Script will be obfuscated server-side before saving. The previous version will be replaced.</div>
+    <div class="fg"><label class="lbl">Lua Source</label><textarea class="inp mono" id="us-src" rows="12" placeholder="-- paste your Lua script here"></textarea></div>
+    <div class="fg"><label class="lbl">Obfuscation Level</label><select class="inp" id="us-level"><option value="full">Full</option><option value="light">Light</option></select></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="uploadScript()">Obfuscate & Upload</button>
+    <div id="us-result" class="hidden" style="margin-top:14px">
+      <div style="height:1px;background:var(--border);margin:14px 0"></div>
+      <label class="lbl">Your Loader</label>
+      <div class="loader-pre" id="us-loader"></div>
+      <div class="flex" style="margin-top:8px;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="copyText('us-loader')">Copy Loader</button>
+        <span style="font-size:11px;color:var(--sub)">Replace KEY_HERE with a key</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROJECT SETTINGS -->
+  <div class="modal hidden" id="modal-proj-settings">
+    <div class="modal-hd"><div class="modal-title">Project Settings</div><button class="modal-x" onclick="closeModal()">×</button></div>
+    <div class="fg"><label class="lbl">Project Name</label><input class="inp" id="ps-name" placeholder="Project name"/></div>
+    <div class="fg">
       <label class="lbl">Mode</label>
-      <select class="inp" id="np-ffa">
-        <option value="false">Key Required</option>
+      <select class="inp" id="ps-ffa">
+        <option value="false">Key Required (default)</option>
         <option value="true">Free For All</option>
       </select>
     </div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="createProject()">Create Project</button>
-  </div>
-
-  <!-- Upload Script -->
-  <div id="modal-uploadScript" class="modal hidden">
-    <div class="modal-header">
-      <div class="modal-title">Upload & Obfuscate Script</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
-    <div class="modal-info">Your Lua source will be obfuscated server-side. <strong>Upload a .lua file or paste source below.</strong></div>
-    <div class="form-group"><label class="lbl">Script Name</label><input class="inp" id="us-name" placeholder="Script name..."/></div>
-    <div class="form-group"><label class="lbl">Lua Source</label><textarea class="inp" id="us-src" rows="9" placeholder="-- paste your script here" style="font-family:'DM Mono',monospace;font-size:12px"></textarea></div>
-    <div class="form-group">
-      <label class="lbl">Obfuscation Level</label>
-      <select class="inp" id="us-level"><option value="full">Full</option><option value="light">Light</option></select>
-    </div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="uploadScript()">Obfuscate & Upload</button>
-    <div id="us-result" class="hidden" style="margin-top:16px">
-      <div class="sep"></div>
-      <label class="lbl">Loader (give to users)</label>
-      <textarea class="inp" id="us-loader" rows="3" readonly style="font-family:'DM Mono',monospace;font-size:11px;resize:none"></textarea>
-      <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="navigator.clipboard.writeText(document.getElementById('us-loader').value);toast('Copied!')">Copy Loader</button>
+    <div class="flex" style="gap:8px;margin-top:4px">
+      <button class="btn btn-ghost grow" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-red" onclick="deleteCurrentProject()">Delete Project</button>
+      <button class="btn btn-primary grow" onclick="saveProjectSettings()">Save Changes</button>
     </div>
   </div>
 
-  <!-- Add User -->
-  <div id="modal-addUser" class="modal hidden">
-    <div class="modal-header">
-      <div class="modal-title">Add User</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
+  <!-- ADD USER -->
+  <div class="modal hidden" id="modal-add-user">
+    <div class="modal-hd"><div class="modal-title">Add User</div><button class="modal-x" onclick="closeModal()">×</button></div>
+    <div class="modal-info">A key will be generated and <b>copied to your clipboard</b>. HWID locks on the user's first script run.</div>
+    <div class="fg">
+      <label class="lbl">Project</label>
+      <select class="inp" id="au-project">
+        <option value="">Select project...</option>
+      </select>
     </div>
-    <div class="modal-info"><strong>Leave all fields blank</strong> to generate an unused key. Key should be added on top of the script like <span class="code">script_key="key here";</span></div>
-    <div class="form-group"><label class="lbl">User Note (optional)</label><input class="inp" id="au-note" placeholder="Reminder note..."/></div>
-    <div class="form-group"><label class="lbl">Discord ID (optional)</label><input class="inp" id="au-discord" placeholder="146284978573..."/></div>
-    <div class="form-group"><label class="lbl">Days (optional — blank = lifetime)</label><input class="inp" id="au-days" type="number" placeholder="30"/></div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="addUser()">Add User</button>
+    <div class="fg"><label class="lbl">Discord ID <span style="color:var(--sub)">(optional)</span></label><input class="inp" id="au-discord" placeholder="123456789..."/></div>
+    <div class="fg"><label class="lbl">Note <span style="color:var(--sub)">(optional)</span></label><input class="inp" id="au-note" placeholder="Customer info..."/></div>
+    <div class="fg"><label class="lbl">Expiry <span style="color:var(--sub)">(leave blank = lifetime)</span></label><select class="inp" id="au-expiry"><option value="">Lifetime</option><option value="1">1 Hour</option><option value="6">6 Hours</option><option value="24">1 Day</option><option value="72">3 Days</option><option value="168">1 Week</option><option value="336">2 Weeks</option><option value="720">1 Month</option><option value="custom">Custom hours...</option></select></div>
+    <div class="fg hidden" id="au-custom-wrap"><label class="lbl">Custom Hours</label><input class="inp" id="au-custom-hrs" type="number" min="1" placeholder="e.g. 48"/></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="addUser()">Generate Key</button>
+    <div id="au-result" class="hidden" style="margin-top:12px">
+      <label class="lbl">Generated Key</label>
+      <div class="loader-pre" id="au-key-out"></div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="copyText('au-key-out')">Copy Key</button>
+    </div>
   </div>
 
-  <!-- Mass Generate -->
-  <div id="modal-massGen" class="modal hidden">
-    <div class="modal-header">
-      <div class="modal-title">Mass Generate Keys</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
+  <!-- MASS GENERATE -->
+  <div class="modal hidden" id="modal-mass-gen">
+    <div class="modal-hd"><div class="modal-title">Mass Generate Keys</div><button class="modal-x" onclick="closeModal()">×</button></div>
+    <div class="fg"><label class="lbl">Project</label><select class="inp" id="mg-project"><option value="">Select project...</option></select></div>
+    <div class="fg"><label class="lbl">Amount (1–500)</label><input class="inp" id="mg-amt" type="number" min="1" max="500" value="10"/></div>
+    <div class="fg"><label class="lbl">Expiry</label><select class="inp" id="mg-expiry"><option value="">Lifetime</option><option value="1">1 Hour</option><option value="6">6 Hours</option><option value="24">1 Day</option><option value="72">3 Days</option><option value="168">1 Week</option><option value="720">1 Month</option><option value="custom">Custom hours...</option></select></div>
+    <div class="fg hidden" id="mg-custom-wrap"><label class="lbl">Custom Hours</label><input class="inp" id="mg-custom-hrs" type="number" min="1" placeholder="e.g. 48"/></div>
+    <div class="fg"><label class="lbl">Note <span style="color:var(--sub)">(optional)</span></label><input class="inp" id="mg-note" placeholder="Batch sale..."/></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="massGenerate()">Generate Keys</button>
+    <div id="mg-result" class="hidden" style="margin-top:12px">
+      <label class="lbl">Generated Keys</label>
+      <textarea class="inp mono" id="mg-keys" rows="8" readonly style="font-size:11px;resize:none"></textarea>
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="navigator.clipboard.writeText(document.getElementById('mg-keys').value);toast('All keys copied!')">Copy All</button>
     </div>
-    <div class="form-group"><label class="lbl">Amount (1–500)</label><input class="inp" id="mg-amt" type="number" min="1" max="500" value="1"/></div>
-    <div class="form-group"><label class="lbl">Days (optional — blank = lifetime)</label><input class="inp" id="mg-days" type="number" placeholder="30"/></div>
-    <div class="form-group"><label class="lbl">Note (optional)</label><input class="inp" id="mg-note" placeholder="Batch sale..."/></div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="massGenerate()">Generate</button>
-    <div id="mg-result" class="hidden" style="margin-top:16px">
-      <div class="sep"></div>
-      <textarea class="inp" id="mg-keys" rows="6" readonly style="font-family:'DM Mono',monospace;font-size:12px;resize:none"></textarea>
-      <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="navigator.clipboard.writeText(document.getElementById('mg-keys').value);toast('Copied all keys!')">Copy All</button>
-    </div>
+  </div>
+
+  <!-- VIEW LOADER -->
+  <div class="modal hidden" id="modal-view-loader">
+    <div class="modal-hd"><div class="modal-title">Script Loader</div><button class="modal-x" onclick="closeModal()">×</button></div>
+    <div class="modal-info">Replace <code>YOUR_KEY_HERE</code> with the user's actual key. Each key only works for <b>one HWID</b>.</div>
+    <div class="loader-pre" id="vl-loader" style="white-space:pre-wrap"></div>
+    <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="copyText('vl-loader')">Copy Loader</button>
   </div>
 
 </div>
@@ -442,315 +410,378 @@ input.inp::placeholder,textarea.inp::placeholder{color:var(--sub)}
 <div id="toasts"></div>
 
 <script>
-let API_KEY = localStorage.getItem("dwl_key") || "";
-let STATE = { projects: [], currentProject: null, currentUsersProject: null };
-const BASE = window.location.origin;
+"use strict";
+let _key = "";
+let _projects = [];
+let _curProj = null;
+let _curSettingsProjId = null;
+const B = window.location.origin;
 
-// ── API ───────────────────────────────────────────────────────────────────────
-async function api(m, p, b) {
+// ── API ──────────────────────────────────────────────────────────────────────
+async function api(method, path, body) {
   try {
-    const r = await fetch(BASE + p, {
-      method: m,
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + API_KEY },
-      body: b ? JSON.stringify(b) : undefined
+    const r = await fetch(B + path, {
+      method,
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + _key },
+      body: body !== undefined ? JSON.stringify(body) : undefined
     });
-    return r.json();
+    const text = await r.text();
+    try { return JSON.parse(text); } catch { return { error: text }; }
   } catch(e) { return { error: e.message }; }
 }
 
-// ── TOAST ─────────────────────────────────────────────────────────────────────
-function toast(msg, type="ok") {
+// ── TOAST ────────────────────────────────────────────────────────────────────
+function toast(msg, type = "ok") {
   const icons = { ok: "✓", err: "✕", info: "ℹ" };
-  const t = document.createElement("div");
-  t.className = "toast " + type;
-  t.innerHTML = `<span>${icons[type]||"ℹ"}</span> ${msg}`;
-  document.getElementById("toasts").appendChild(t);
-  setTimeout(() => t.remove(), 3500);
+  const el = document.createElement("div");
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span style="color:${type==="ok"?"var(--grn)":type==="err"?"var(--red)":"var(--acc)"}">${icons[type]}</span> ${msg}`;
+  document.getElementById("toasts").appendChild(el);
+  setTimeout(() => el.remove(), 3500);
 }
 
-// ── LOGIN ─────────────────────────────────────────────────────────────────────
-async function doLogin() {
-  const k = document.getElementById("apiKeyInput").value.trim();
-  if (!k) return toast("Enter your API key", "err");
-  API_KEY = k;
-  const d = await api("GET", "/v1/account");
-  if (!d.success) { toast("Invalid API key", "err"); API_KEY = ""; return; }
-  localStorage.setItem("dwl_key", k);
-  document.getElementById("loginScreen").classList.add("hidden");
-  init(d.account);
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+function copyText(elId) {
+  const el = document.getElementById(elId);
+  const txt = el.value || el.textContent || el.innerText;
+  navigator.clipboard.writeText(txt).then(() => toast("Copied!")).catch(() => toast("Copy failed","err"));
 }
-document.getElementById("apiKeyInput").addEventListener("keydown", e => { if(e.key==="Enter") doLogin(); });
+
+function formatExpiry(k) {
+  if (!k.expires_at) return '<span style="color:var(--grn)">Lifetime</span>';
+  const sec = k.expires_at - Math.floor(Date.now()/1000);
+  if (sec <= 0) return '<span class="badge badge-red">Expired</span>';
+  const d = Math.floor(sec/86400), h = Math.floor((sec%86400)/3600);
+  const cls = d > 7 ? "badge-green" : d > 2 ? "badge-yellow" : "badge-red";
+  return `<span class="badge ${cls}">${d > 0 ? d+"d " : ""}${h}h</span>`;
+}
+
+function hoursToExpiry(val, customId) {
+  const h = val === "custom"
+    ? (parseInt(document.getElementById(customId)?.value) || 0)
+    : (parseInt(val) || 0);
+  return h > 0 ? Math.floor(Date.now()/1000) + h * 3600 : null;
+}
+
+// ── LOGIN / LOGOUT ────────────────────────────────────────────────────────────
+async function doLogin() {
+  const k = document.getElementById("loginKey").value.trim();
+  if (!k) return;
+  const errEl = document.getElementById("loginErr");
+  errEl.textContent = "Verifying..."; errEl.classList.remove("hidden");
+  const d = await api("GET", "/v1/account");
+  if (!d.success) {
+    errEl.textContent = "Invalid API key — check and try again.";
+    return;
+  }
+  _key = k;
+  localStorage.setItem("_lx_key", k);
+  errEl.classList.add("hidden");
+  document.getElementById("loginWrap").classList.add("hidden");
+  await boot(d.account);
+}
+
+document.getElementById("loginKey").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
 
 function logout() {
-  localStorage.removeItem("dwl_key");
+  localStorage.removeItem("_lx_key");
   location.reload();
 }
 
-// ── INIT ──────────────────────────────────────────────────────────────────────
-async function init(account) {
-  // sidebar user
-  document.getElementById("sidebarEmail").textContent = account.email || "—";
-  document.getElementById("sidebarPlan").textContent = (account.plan || "starter").toUpperCase();
-  document.getElementById("sidebarAvatar").textContent = (account.email||"?")[0].toUpperCase();
-  document.getElementById("topbarUser").textContent = account.email;
-
-  // account page
-  document.getElementById("acc-email").textContent = account.email || "—";
-  document.getElementById("acc-plan").innerHTML = `<span class="badge badge-blue">${account.plan||"starter"}</span>`;
-  document.getElementById("acc-created").textContent = account.created_at ? new Date(account.created_at).toLocaleDateString() : "—";
-
-  // load stats + projects
-  loadStats();
-  loadProjects();
-  renderFakeChart();
+// ── BOOT ─────────────────────────────────────────────────────────────────────
+async function boot(account) {
+  // Populate sidebar
+  const email = account.email || "—";
+  document.getElementById("sbAv").textContent  = email[0].toUpperCase();
+  document.getElementById("sbEmail").textContent = email;
+  document.getElementById("sbPlan").textContent  = (account.plan||"starter").toUpperCase();
+  document.getElementById("tbUser").textContent  = email;
+  // Populate account page
+  document.getElementById("ac-email").textContent = email;
+  document.getElementById("ac-plan").innerHTML    = `<span class="badge badge-blue">${account.plan||"starter"}</span>`;
+  document.getElementById("ac-since").textContent = account.created_at ? new Date(account.created_at).toLocaleDateString() : "—";
+  document.getElementById("ac-key").value = _key;
+  // Load data
+  await Promise.all([loadStats(), loadProjects()]);
 }
 
-// ── STATS ─────────────────────────────────────────────────────────────────────
+// ── STATS ────────────────────────────────────────────────────────────────────
 async function loadStats() {
   const d = await api("GET", "/v1/stats");
   if (!d.success) return;
-  document.getElementById("s-projects").textContent = d.projects;
-  document.getElementById("s-users").textContent = d.total_keys;
-  document.getElementById("s-execs").textContent = d.total_executions.toLocaleString();
-  document.getElementById("s-obfs").textContent = d.obfs_used || 0;
-  document.getElementById("acc-s-projects").textContent = d.projects;
-  document.getElementById("acc-s-keys").textContent = d.total_keys;
-  document.getElementById("acc-s-execs").textContent = d.total_executions.toLocaleString();
-  document.getElementById("acc-s-obfs").textContent = d.obfs_used || 0;
-  // progress bars
-  const projPct = Math.min(100, (d.projects / 18) * 100);
-  const userPct = Math.min(100, (d.total_keys / 10000) * 100);
-  document.getElementById("prog-scripts").style.width = projPct + "%";
-  document.getElementById("prog-users").style.width = userPct + "%";
+  const plans = { starter: { proj: 2, users: 200 }, pro: { proj: 8, users: 1000 }, elite: { proj: 18, users: 10000 } };
+  const lim = plans[d.plan] || plans.starter;
+  document.getElementById("s1").textContent = d.projects || 0;
+  document.getElementById("s2").textContent = d.total_keys || 0;
+  document.getElementById("s3").textContent = (d.total_executions||0).toLocaleString();
+  document.getElementById("s4").textContent = d.obfs_used || 0;
+  document.getElementById("sf1").style.width = Math.min(100,(d.projects/lim.proj)*100)+"%";
+  document.getElementById("sf2").style.width = Math.min(100,(d.total_keys/lim.users)*100)+"%";
+  document.getElementById("sf3").style.width = "60%";
+  document.getElementById("sf4").style.width = Math.min(100,((d.obfs_used||0)/100)*100)+"%";
+  document.getElementById("ac-s1").textContent = d.projects||0;
+  document.getElementById("ac-s2").textContent = d.total_keys||0;
+  document.getElementById("ac-s3").textContent = (d.total_executions||0).toLocaleString();
+  document.getElementById("ac-s4").textContent = d.obfs_used||0;
 }
 
-function renderFakeChart() {
-  const bars = document.getElementById("chartBars");
-  bars.innerHTML = "";
-  const now = new Date();
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date(now); d.setDate(d.getDate() - i);
-    const h = Math.random() * 70 + 5;
-    const bar = document.createElement("div");
-    bar.className = "chart-bar";
-    bar.style.height = h + "%";
-    bar.title = d.toLocaleDateString();
-    bars.appendChild(bar);
-  }
-}
-
-// ── PROJECTS ──────────────────────────────────────────────────────────────────
+// ── PROJECTS ─────────────────────────────────────────────────────────────────
 async function loadProjects() {
   const d = await api("GET", "/v1/projects");
-  if (!d.success) return;
-  STATE.projects = d.projects || [];
+  if (!d.success) { console.error("loadProjects failed:", d.error); return; }
+  _projects = d.projects || [];
   renderProjects();
+  populateProjectSelects();
   renderUserTabs();
 }
 
 function renderProjects() {
   const el = document.getElementById("projectsList");
-  if (!STATE.projects.length) {
-    el.innerHTML = `<div class="card" style="text-align:center;padding:40px;color:var(--sub)">No projects yet. Create one above.</div>`;
+  if (!_projects.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">◈</div><div class="empty-title">No projects yet</div><div class="empty-sub">Create a project to get your first loader</div></div>`;
     return;
   }
-  el.innerHTML = STATE.projects.map(p => `
-    <div class="project-card">
-      <div class="project-header">
-        <div class="project-icon">🔴</div>
+  el.innerHTML = _projects.map(p => {
+    const hasScript = !!p.script_version && p.script_version !== "0000";
+    return `
+    <div class="proj-card" id="pcard-${p.id}">
+      <div class="proj-hd">
+        <div class="proj-icon">◈</div>
         <div>
-          <div class="project-name">${p.name}</div>
-          <div class="project-id">${p.id}</div>
+          <div class="proj-name">${escHtml(p.name)}</div>
+          <div class="proj-id">${p.id}</div>
         </div>
-        <div class="project-actions">
-          <button class="btn btn-primary btn-sm" onclick="openUpload('${p.id}')">+ Add Script</button>
-          <button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText('${p.id}');toast('Project ID copied!')">Copy ID</button>
-          <button class="btn btn-ghost btn-sm btn-icon" onclick="toggleProject('${p.id}','${p.active}')">⚙</button>
+        <div class="proj-acts">
+          <button class="btn btn-primary btn-sm" onclick="openUploadScript('${p.id}')">↑ Upload Script</button>
+          ${hasScript ? `<button class="btn btn-ghost btn-sm" onclick="showLoader('${p.id}','${escHtml(p.name)}')">⎘ Loader</button>` : ""}
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="openProjSettings('${p.id}')" title="Project Settings">⚙</button>
+          <div class="tog-track ${p.active?"on":""}" onclick="toggleProject('${p.id}','${p.active}',this)"><div class="tog-knob"></div></div>
         </div>
       </div>
-      <table class="scripts-table">
-        <thead><tr>
-          <th style="width:36px"></th>
-          <th>Script Name</th>
-          <th>Status</th>
-          <th>Version</th>
-          <th>Last Edit</th>
-          <th>Actions</th>
-        </tr></thead>
-        <tbody>
-          <tr>
-            <td><div class="toggle"><div class="toggle-track ${p.active?'on':''}" onclick="toggleProject('${p.id}','${p.active}')"><div class="toggle-knob"></div></div></div></td>
-            <td><div style="font-weight:600">${p.name}</div><div style="font-size:11px;color:var(--sub);font-family:'DM Mono',monospace">${p.id.slice(0,16)}...</div></td>
-            <td><span class="badge badge-${p.active?'green':'red'}">${p.active?'ACTIVE':'INACTIVE'}</span></td>
-            <td><span class="code">v${p.script_version||'0.0.0'}</span></td>
-            <td style="color:var(--sub);font-size:12px">${p.updated_at ? new Date(p.updated_at).toLocaleString() : '—'}</td>
-            <td>
-              <div class="flex">
-                <button class="btn btn-ghost btn-sm" onclick="openUpload('${p.id}')">⬆ Loader</button>
-                <button class="btn btn-ghost btn-sm" onclick="openUpload('${p.id}')">✏ Edit</button>
-                <button class="btn btn-red btn-sm" onclick="deleteProject('${p.id}')">🗑 Delete</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
+      <table class="tbl">
+        <thead><tr><th>Status</th><th>Version</th><th>Mode</th><th>Last Updated</th></tr></thead>
+        <tbody><tr>
+          <td><span class="badge badge-${p.active?"green":"red"}">${p.active?"ACTIVE":"PAUSED"}</span></td>
+          <td><code>v${p.script_version||"N/A"}</code></td>
+          <td><span class="badge badge-${p.ffa?"yellow":"blue"}">${p.ffa?"FREE FOR ALL":"KEY REQUIRED"}</span></td>
+          <td style="color:var(--sub);font-size:11px">${p.updated_at ? new Date(p.updated_at).toLocaleString() : "Never"}</td>
+        </tr></tbody>
       </table>
-    </div>
-  `).join("");
+    </div>`;
+  }).join("");
 }
 
 async function createProject() {
-  const name = document.getElementById("np-name").value.trim();
-  const ffa  = document.getElementById("np-ffa").value === "true";
-  if (!name) return toast("Name required", "err");
-  const d = await api("POST", "/v1/projects", { name, ffa });
-  if (!d.success) return toast(d.error, "err");
-  toast("Project created!");
+  const name  = document.getElementById("cp-name").value.trim();
+  const src   = document.getElementById("cp-src").value.trim();
+  const level = document.getElementById("cp-level").value;
+  if (!name) return toast("Project name is required", "err");
+  // Create project first
+  const dc = await api("POST", "/v1/projects", { name, ffa: false });
+  if (!dc.success) return toast(dc.error || "Failed to create project", "err");
+  const projId = dc.project.id;
+  // If source provided, upload and obfuscate it
+  if (src) {
+    const du = await api("POST", `/v1/projects/${projId}/script`, { source: src, level });
+    if (!du.success) {
+      toast("Project created but script upload failed: " + (du.error || "unknown error"), "info");
+    } else {
+      toast(`Project created + script obfuscated! v${du.version}`);
+    }
+  } else {
+    toast("Project created! Upload a script next.");
+  }
   closeModal();
-  loadProjects();
-  loadStats();
+  document.getElementById("cp-name").value = "";
+  document.getElementById("cp-src").value = "";
+  await loadProjects();
+  await loadStats();
 }
 
-async function deleteProject(id) {
-  if (!confirm("Delete this project and all its keys?")) return;
-  await api("DELETE", `/v1/projects/${id}`);
-  toast("Project deleted");
-  loadProjects();
-  loadStats();
-}
-
-async function toggleProject(id, current) {
-  await api("POST", `/v1/projects/${id}/toggle`);
-  toast("Project toggled");
-  loadProjects();
-}
-
-function openUpload(id) {
-  STATE.currentProject = id;
+function openUploadScript(projId) {
+  _curProj = projId;
   document.getElementById("us-src").value = "";
   document.getElementById("us-result").classList.add("hidden");
-  openModal("uploadScript");
+  openModal("upload-script");
 }
 
 async function uploadScript() {
-  const src  = document.getElementById("us-src").value.trim();
-  const name = document.getElementById("us-name").value.trim() || "Script";
+  const src   = document.getElementById("us-src").value.trim();
   const level = document.getElementById("us-level").value;
-  if (!src) return toast("Paste source first", "err");
-  const d = await api("POST", `/v1/projects/${STATE.currentProject}/script`, { source: src, level });
+  if (!src) return toast("Paste your script source first", "err");
+  if (!_curProj) return toast("No project selected", "err");
+  const d = await api("POST", `/v1/projects/${_curProj}/script`, { source: src, level });
   if (!d.success) return toast(d.error || "Upload failed", "err");
-  toast("Obfuscated! v" + d.version);
-  document.getElementById("us-loader").value = d.loader;
+  toast(`Script obfuscated! v${d.version} — ${d.obfuscated_length} bytes`);
+  document.getElementById("us-loader").textContent = d.loader;
   document.getElementById("us-result").classList.remove("hidden");
-  loadProjects();
+  await loadProjects();
 }
 
-// ── USERS ─────────────────────────────────────────────────────────────────────
+async function showLoader(projId, projName) {
+  const baseUrl = B;
+  const loader = `script_key="YOUR_KEY_HERE";\nloadstring(game:HttpGet("${baseUrl}/v1/auth?key="..script_key.."&hwid="..game:GetService("RbxAnalyticsService"):GetClientId()))()`;
+  document.getElementById("vl-loader").textContent = loader;
+  openModal("view-loader");
+}
+
+function openProjSettings(projId) {
+  const proj = _projects.find(p => p.id === projId);
+  if (!proj) return toast("Project not found", "err");
+  _curSettingsProjId = projId;
+  document.getElementById("ps-name").value = proj.name;
+  document.getElementById("ps-ffa").value  = String(proj.ffa);
+  openModal("proj-settings");
+}
+
+async function saveProjectSettings() {
+  if (!_curSettingsProjId) return;
+  const name = document.getElementById("ps-name").value.trim();
+  const ffa  = document.getElementById("ps-ffa").value === "true";
+  if (!name) return toast("Name required", "err");
+  const d = await api("PATCH", `/v1/projects/${_curSettingsProjId}`, { name, ffa });
+  if (!d.success) return toast(d.error || "Failed to save", "err");
+  toast("Project settings saved!");
+  closeModal();
+  await loadProjects();
+}
+
+async function deleteCurrentProject() {
+  if (!_curSettingsProjId) return;
+  if (!confirm("Delete this project and ALL its keys? This cannot be undone.")) return;
+  await api("DELETE", `/v1/projects/${_curSettingsProjId}`);
+  toast("Project deleted");
+  closeModal();
+  _curSettingsProjId = null;
+  await loadProjects();
+  await loadStats();
+}
+
+async function toggleProject(id, current, el) {
+  const d = await api("POST", `/v1/projects/${id}/toggle`);
+  if (!d.success) return toast(d.error||"Failed","err");
+  const on = d.active;
+  if (on) el.classList.add("on"); else el.classList.remove("on");
+  toast(on ? "Project activated" : "Project paused");
+  await loadProjects();
+}
+
+// ── USERS ────────────────────────────────────────────────────────────────────
 function renderUserTabs() {
   const tabs = document.getElementById("userProjectTabs");
-  tabs.innerHTML = STATE.projects.map((p, i) => `
-    <button class="btn ${i===0?'btn-primary':'btn-ghost'}" onclick="selectUserProject('${p.id}',this)">${p.name}</button>
-  `).join("") + `<button class="btn btn-green btn-sm" onclick="openAddUser()">+ Add User</button>
-   <button class="btn btn-ghost btn-sm" onclick="openModal('massGen')">⚡ Mass Generate</button>`;
-  if (STATE.projects.length) selectUserProject(STATE.projects[0].id);
+  tabs.innerHTML = _projects.map((p, i) => `
+    <button class="btn ${i===0&&_curProj===null?"btn-primary":"btn-ghost"} btn-sm" data-pid="${p.id}" onclick="selectProj('${p.id}',this)">${escHtml(p.name)}</button>
+  `).join("");
+  if (_projects.length && _curProj === null) {
+    selectProj(_projects[0].id);
+  } else if (_curProj) {
+    loadUsers(_curProj);
+  }
 }
 
-async function selectUserProject(id, btn) {
-  STATE.currentUsersProject = id;
-  // update button styles
-  document.querySelectorAll("#userProjectTabs .btn").forEach(b => {
-    if (b.textContent.trim() !== "+ Add User" && b.textContent.trim() !== "⚡ Mass Generate") {
-      b.className = "btn btn-ghost";
-    }
-  });
-  if (btn) btn.className = "btn btn-primary";
+function selectProj(id, btn) {
+  _curProj = id;
+  document.querySelectorAll("#userProjectTabs .btn").forEach(b => b.className = "btn btn-ghost btn-sm");
+  if (btn) btn.className = "btn btn-primary btn-sm";
+  else {
+    const b = document.querySelector(`#userProjectTabs [data-pid="${id}"]`);
+    if (b) b.className = "btn btn-primary btn-sm";
+  }
   loadUsers(id);
 }
 
-async function loadUsers(pid, search="") {
-  const panel = document.getElementById("userProjectPanel");
-  panel.innerHTML = `<div class="card" style="color:var(--sub);text-align:center;padding:30px">Loading...</div>`;
-  const d = await api("GET", `/v1/projects/${pid}/keys?limit=100&search=${search}`);
-  if (!d.success) { panel.innerHTML = `<div class="card" style="color:var(--red)">Error loading users</div>`; return; }
-
+async function loadUsers(pid, search = "") {
+  const panel = document.getElementById("userPanel");
+  panel.innerHTML = `<div class="card" style="text-align:center;padding:24px;color:var(--sub)">Loading users...</div>`;
+  const url = `/v1/projects/${pid}/keys?limit=100${search ? "&search="+encodeURIComponent(search) : ""}`;
+  const d = await api("GET", url);
+  if (!d.success) { panel.innerHTML = `<div class="card" style="color:var(--red)">Error: ${d.error||"Unknown error"}</div>`; return; }
   const keys = d.keys || [];
-  const proj = STATE.projects.find(p=>p.id===pid);
-
   panel.innerHTML = `
     <div class="card">
-      <div class="flex" style="margin-bottom:14px">
-        <input class="inp grow" id="userSearch" placeholder="Search users..." oninput="loadUsers('${pid}',this.value)" value="${search}"/>
-        <div style="font-size:12px;color:var(--sub);white-space:nowrap">Showing ${keys.length} users</div>
+      <div class="search-row">
+        <input class="inp grow" id="userSearch" placeholder="Search keys or Discord IDs..." value="${escHtml(search)}" oninput="loadUsers('${pid}',this.value)"/>
+        <span style="font-size:11px;color:var(--sub);white-space:nowrap;align-self:center">${d.total||keys.length} users</span>
       </div>
-      <div style="overflow-x:auto">
-      <table class="data-table">
-        <thead><tr>
-          <th>User Key</th>
-          <th>Discord ID</th>
-          <th>Status</th>
-          <th>Note</th>
-          <th>Executions</th>
-          <th>HWID Resets</th>
-          <th>Days</th>
-          <th>Actions</th>
-        </tr></thead>
-        <tbody>
-          ${keys.length ? keys.map(k => {
-            const now = Math.floor(Date.now()/1000);
-            const active = k.active && (!k.expires_at || k.expires_at > now);
-            const daysLeft = k.expires_at ? Math.max(0, Math.ceil((k.expires_at - now) / 86400)) : null;
-            const daysClass = daysLeft === null ? "" : daysLeft > 14 ? "days-green" : daysLeft > 3 ? "days-yellow" : "days-red";
-            return `<tr>
-              <td><div class="user-key-cell"><div class="key-mono">${k.key_string.slice(0,20)}...</div><div class="key-sub">${k.id.slice(0,16)}</div></div></td>
-              <td style="color:var(--sub);font-size:12px">${k.discord_id||'—'}</td>
-              <td><span class="badge badge-${active?'green':'red'}">${active?'WHITELISTED':'REVOKED'}</span></td>
-              <td style="color:var(--sub);font-size:12px">${k.note||'—'}</td>
-              <td style="font-weight:600">${k.total_executions||0}</td>
-              <td>${k.hwid?'🔒':'🔓'}</td>
-              <td class="${daysClass}">${daysLeft===null?'N/A':daysLeft+'d'}</td>
-              <td>
-                <div class="flex">
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr>
+            <th>Key</th><th>Discord ID</th><th>Status</th><th>Note</th>
+            <th>Runs</th><th>HWID</th><th>Expiry</th><th>Actions</th>
+          </tr></thead>
+          <tbody>
+            ${keys.length ? keys.map(k => {
+              const now = Math.floor(Date.now()/1000);
+              const active = k.active && (!k.expires_at || k.expires_at > now);
+              const truncKey = k.key_string.length > 22 ? k.key_string.slice(0,22)+"…" : k.key_string;
+              return `<tr>
+                <td><div class="key-chip" title="${k.key_string}">${truncKey}</div></td>
+                <td style="color:var(--sub);font-size:11px">${k.discord_id||"—"}</td>
+                <td><span class="badge badge-${active?"green":"red"}">${active?"ACTIVE":"REVOKED"}</span></td>
+                <td style="color:var(--sub);font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${k.note||"—"}</td>
+                <td style="font-weight:600">${k.total_executions||0}</td>
+                <td>${k.hwid ? '<span class="badge badge-cyan">🔒 LOCKED</span>' : '<span class="badge badge-purple">🔓 FREE</span>'}</td>
+                <td>${formatExpiry(k)}</td>
+                <td><div class="flex">
                   <button class="btn btn-ghost btn-sm btn-icon" onclick="resetHwid('${k.key_string}','${pid}')" title="Reset HWID">⚙</button>
-                  <button class="btn btn-red btn-sm btn-icon" onclick="revokeKey('${k.key_string}','${pid}')" title="Revoke">🗑</button>
-                </div>
-              </td>
-            </tr>`;
-          }).join("") : `<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sub)">No users yet.</td></tr>`}
-        </tbody>
-      </table>
+                  <button class="btn ${active?"btn-red":"btn-ghost"} btn-sm btn-icon" onclick="${active?`revokeKey('${k.key_string}','${pid}')`:`unrevokeKey('${k.key_string}','${pid}')`}" title="${active?"Revoke":"Unrevoke"}">${active?"🗑":"↩"}</button>
+                </div></td>
+              </tr>`;
+            }).join("") : `<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--sub)">No users for this project yet.</td></tr>`}
+          </tbody>
+        </table>
       </div>
     </div>`;
 }
 
 function openAddUser() {
-  document.getElementById("au-note").value = "";
   document.getElementById("au-discord").value = "";
-  document.getElementById("au-days").value = "";
-  openModal("addUser");
+  document.getElementById("au-note").value    = "";
+  document.getElementById("au-expiry").value  = "";
+  document.getElementById("au-result").classList.add("hidden");
+  document.getElementById("au-custom-wrap").classList.add("hidden");
+  document.getElementById("au-expiry").onchange = function() {
+    document.getElementById("au-custom-wrap").classList.toggle("hidden", this.value !== "custom");
+  };
+  openModal("add-user");
 }
 
 async function addUser() {
-  const pid = STATE.currentUsersProject;
-  if (!pid) return toast("Select a project first", "err");
-  const note    = document.getElementById("au-note").value || null;
-  const discord = document.getElementById("au-discord").value || null;
-  const days    = parseInt(document.getElementById("au-days").value) || null;
-  const d = await api("POST", `/v1/projects/${pid}/keys`, { amount:1, note, discord_id: discord, key_days: days });
-  if (!d.success) return toast(d.error, "err");
-  toast(`Key generated: ${d.keys[0]}`);
-  navigator.clipboard.writeText(d.keys[0]).catch(()=>{});
-  closeModal();
+  const pid     = document.getElementById("au-project").value;
+  const discord = document.getElementById("au-discord").value.trim() || null;
+  const note    = document.getElementById("au-note").value.trim() || null;
+  const expVal  = document.getElementById("au-expiry").value;
+  if (!pid) return toast("Select a project", "err");
+  const hrs = expVal === "custom"
+    ? (parseInt(document.getElementById("au-custom-hrs").value)||0)
+    : (parseInt(expVal)||0);
+  const key_days = hrs > 0 ? null : null;
+  const expires_at = hrs > 0 ? Math.floor(Date.now()/1000) + hrs * 3600 : null;
+  const d = await api("POST", `/v1/projects/${pid}/keys`, {
+    amount: 1, discord_id: discord, note, expires_at
+  });
+  if (!d.success) return toast(d.error || "Failed", "err");
+  const generatedKey = d.keys[0];
+  document.getElementById("au-key-out").textContent = generatedKey;
+  document.getElementById("au-result").classList.remove("hidden");
+  navigator.clipboard.writeText(generatedKey).catch(() => {});
+  toast("Key generated and copied!");
   loadUsers(pid);
   loadStats();
 }
 
 async function massGenerate() {
-  const pid  = STATE.currentUsersProject;
-  if (!pid) return toast("Select a project first", "err");
-  const amt  = parseInt(document.getElementById("mg-amt").value)||1;
-  const days = parseInt(document.getElementById("mg-days").value)||null;
-  const note = document.getElementById("mg-note").value||null;
-  const d    = await api("POST", `/v1/projects/${pid}/keys`, { amount:amt, key_days:days, note });
-  if (!d.success) return toast(d.error, "err");
+  const pid     = document.getElementById("mg-project").value;
+  const amt     = parseInt(document.getElementById("mg-amt").value) || 1;
+  const expVal  = document.getElementById("mg-expiry").value;
+  const note    = document.getElementById("mg-note").value.trim() || null;
+  if (!pid) return toast("Select a project", "err");
+  const hrs = expVal === "custom"
+    ? (parseInt(document.getElementById("mg-custom-hrs").value)||0)
+    : (parseInt(expVal)||0);
+  const expires_at = hrs > 0 ? Math.floor(Date.now()/1000) + hrs * 3600 : null;
+  const d = await api("POST", `/v1/projects/${pid}/keys`, { amount: amt, note, expires_at });
+  if (!d.success) return toast(d.error || "Failed", "err");
   toast(`Generated ${d.count} keys!`);
   document.getElementById("mg-keys").value = d.keys.join("\n");
   document.getElementById("mg-result").classList.remove("hidden");
@@ -758,75 +789,99 @@ async function massGenerate() {
   loadStats();
 }
 
-async function resetHwid(key, pid) {
-  const d = await api("POST", `/v1/keys/${key}/resethwid`);
-  toast(d.success ? "HWID reset!" : d.error, d.success?"ok":"err");
-  loadUsers(pid);
+document.getElementById("mg-expiry").addEventListener("change", function() {
+  document.getElementById("mg-custom-wrap").classList.toggle("hidden", this.value !== "custom");
+});
+
+async function resetHwid(keyStr, pid) {
+  const d = await api("POST", `/v1/keys/${encodeURIComponent(keyStr)}/resethwid`);
+  toast(d.success ? "HWID reset — user can now run on a new device" : d.error || "Failed", d.success?"ok":"err");
+  if (d.success) loadUsers(pid);
 }
 
-async function revokeKey(key, pid) {
+async function revokeKey(keyStr, pid) {
   if (!confirm("Revoke this key?")) return;
-  await api("POST", `/v1/keys/${key}/revoke`);
-  toast("Key revoked");
-  loadUsers(pid);
-  loadStats();
+  const d = await api("POST", `/v1/keys/${encodeURIComponent(keyStr)}/revoke`);
+  toast(d.success ? "Key revoked" : d.error||"Failed", d.success?"ok":"err");
+  if (d.success) loadUsers(pid);
 }
 
-// ── ACCOUNT ───────────────────────────────────────────────────────────────────
-let apiKeyVisible = false;
-function toggleApiKey() {
-  const el = document.getElementById("acc-apikey");
-  apiKeyVisible = !apiKeyVisible;
-  el.textContent = apiKeyVisible ? API_KEY : "••••••••••••••••••••••••";
+async function unrevokeKey(keyStr, pid) {
+  const d = await api("POST", `/v1/keys/${encodeURIComponent(keyStr)}/unrevoke`);
+  toast(d.success ? "Key restored" : d.error||"Failed", d.success?"ok":"err");
+  if (d.success) loadUsers(pid);
+}
+
+// ── ACCOUNT ──────────────────────────────────────────────────────────────────
+let _keyVisible = false;
+function toggleKey() {
+  _keyVisible = !_keyVisible;
+  document.getElementById("ac-key").type = _keyVisible ? "text" : "password";
 }
 function copyApiKey() {
-  navigator.clipboard.writeText(API_KEY).then(()=>toast("API key copied!"));
+  navigator.clipboard.writeText(_key).then(() => toast("API key copied!"));
 }
 
-// ── NAVIGATION ────────────────────────────────────────────────────────────────
+// ── NAVIGATION ───────────────────────────────────────────────────────────────
 function showPage(name, el) {
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
   document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
-  document.getElementById("page-" + name).classList.add("active");
+  const pg = document.getElementById("page-"+name);
+  if (pg) pg.classList.add("active");
   if (el) el.classList.add("active");
-  document.getElementById("topbarTitle").textContent = name.charAt(0).toUpperCase() + name.slice(1);
-  if (name === "account") loadAccountPage();
+  document.getElementById("tbTitle").textContent = name.charAt(0).toUpperCase() + name.slice(1);
   if (name === "users") renderUserTabs();
-}
-
-async function loadAccountPage() {
-  const d = await api("GET", "/v1/stats");
-  if (d.success) {
-    document.getElementById("acc-s-projects").textContent = d.projects;
-    document.getElementById("acc-s-keys").textContent = d.total_keys;
-    document.getElementById("acc-s-execs").textContent = d.total_executions.toLocaleString();
-    document.getElementById("acc-s-obfs").textContent = d.obfs_used || 0;
-  }
+  if (name === "account") loadStats();
 }
 
 // ── MODALS ────────────────────────────────────────────────────────────────────
 function openModal(name) {
   document.querySelectorAll(".modal").forEach(m => m.classList.add("hidden"));
-  document.getElementById("modal-" + name).classList.remove("hidden");
-  document.getElementById("modalOverlay").classList.add("open");
+  const m = document.getElementById("modal-"+name);
+  if (m) m.classList.remove("hidden");
+  document.getElementById("modalOv").classList.add("open");
 }
-function closeModal() {
-  document.getElementById("modalOverlay").classList.remove("open");
+function closeModal() { document.getElementById("modalOv").classList.remove("open"); }
+
+// ── MISC ─────────────────────────────────────────────────────────────────────
+function populateProjectSelects() {
+  ["au-project","mg-project"].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Select project...</option>';
+    _projects.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p.id; opt.textContent = p.name;
+      if (p.id === current) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+async function refreshAll() {
+  await Promise.all([loadStats(), loadProjects()]);
+  toast("Refreshed", "info");
 }
 
 // ── AUTO LOGIN ────────────────────────────────────────────────────────────────
-if (API_KEY) {
-  (async () => {
-    const d = await api("GET", "/v1/account");
-    if (d.success) {
-      document.getElementById("loginScreen").classList.add("hidden");
-      init(d.account);
-    } else {
-      localStorage.removeItem("dwl_key");
-      API_KEY = "";
-    }
-  })();
-}
+(async () => {
+  const saved = localStorage.getItem("_lx_key");
+  if (!saved) return;
+  _key = saved;
+  const d = await api("GET", "/v1/account");
+  if (d.success) {
+    document.getElementById("loginWrap").classList.add("hidden");
+    await boot(d.account);
+  } else {
+    localStorage.removeItem("_lx_key");
+    _key = "";
+  }
+})();
 </script>
 </body>
 </html>
