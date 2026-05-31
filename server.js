@@ -301,6 +301,23 @@ app.post("/v1/projects", apiLimiter, requireApiKey, async (req, res) => {
     res.json({ success: true, project: data });
 });
 
+
+// PATCH project (name/ffa)
+app.patch("/v1/projects/:project_id", apiLimiter, requireApiKey, async (req, res) => {
+    const { name, ffa } = req.body;
+    const updates = {};
+    if (name !== undefined) updates.name = name;
+    if (ffa !== undefined) updates.ffa = ffa;
+    updates.updated_at = new Date().toISOString();
+    const { data, error } = await sb.from("projects")
+        .update(updates)
+        .eq("id", req.params.project_id)
+        .eq("owner_id", req.owner.id)
+        .select().single();
+    if (error || !data) return res.status(404).json({ error: "Project not found" });
+    res.json({ success: true, project: data });
+});
+
 app.delete("/v1/projects/:project_id", apiLimiter, requireApiKey, async (req, res) => {
     await sb.from("projects").delete()
         .eq("id", req.params.project_id).eq("owner_id", req.owner.id);
@@ -374,13 +391,13 @@ app.post("/v1/projects/:project_id/keys", apiLimiter, requireApiKey, async (req,
     if ((count || 0) + amount > maxU)
         return res.status(429).json({ error: `User limit reached (${maxU} for ${req.owner.plan} plan)` });
     const rows = Array.from({ length: amount }, () => ({
-        project_id: req.params.project_id,
+        project_id:       req.params.project_id,
         key_string:       genKey(prefix),
         discord_id:       discord_id || null,
         note:             note || null,
         active:           true,
         key_days:         key_days || null,
-        expires_at:       null,
+        expires_at:       req.body.expires_at || null,
         total_executions: 0,
         created_at:       new Date().toISOString()
     }));
