@@ -1,518 +1,639 @@
 require("dotenv").config();
-const express     = require("express");
-const cors        = require("cors");
-const rateLimit   = require("express-rate-limit");
+const {
+    Client, GatewayIntentBits, GatewayIntentBit,
+    SlashCommandBuilder, REST, Routes,
+    EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
+    ModalBuilder, TextInputBuilder, TextInputStyle,
+    PermissionFlagsBits, ActivityType, StringSelectMenuBuilder
+} = require("discord.js");
 const { createClient } = require("@supabase/supabase-js");
-const crypto      = require("crypto");
-const path        = require("path");
-const cron        = require("node-cron");
+const crypto = require("crypto");
 
-const app = express();
-const sb  = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+// ── Keep-alive on Railway ─────────────────────────────────────────────────────
+process.on("SIGTERM", () => { console.log("[Bot] SIGTERM — staying alive"); });
+process.on("SIGINT",  () => { console.log("[Bot] SIGINT  — staying alive"); });
+process.on("uncaughtException",  err => console.error("[Bot] Uncaught:", err));
+process.on("unhandledRejection", err => console.error("[Bot] Unhandled rejection:", err));
 
-app.use(cors());
-app.use(express.json({ limit: "8mb" }));
-app.use(express.static(path.join(__dirname, "dashboard")));
+const sb     = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+const SECRET = process.env.MASTER_SECRET;
+const BASE   = process.env.RAILWAY_PUBLIC_DOMAIN
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+    : `http://localhost:${process.env.PORT || 3000}`;
 
-const authLimiter = rateLimit({ windowMs: 60_000, max: 40,  message: { error: "Rate limited" } });
-const apiLimiter  = rateLimit({ windowMs: 60_000, max: 200, message: { error: "Rate limited" } });
+// ── Colors ────────────────────────────────────────────────────────────────────
+const C = { main: 0x6366f1, ok: 0x10b981, err: 0xf43f5e, warn: 0xf59e0b, info: 0x06b6d4 };
 
-// ══════════════════════════════════════════════════════════════════════════════
-// PROMETHEUS OBFUSCATION ENGINE
-// Techniques: variable renaming, string→bytes, number→bit32, dead code,
-//             control flow flattening, table indirection, XOR+base64 wrapper
-// ══════════════════════════════════════════════════════════════════════════════
-const PrometheusObf = (() => {
-    const uid  = () => "_" + crypto.randomBytes(5).toString("hex");
-    const uid2 = () => crypto.randomBytes(4).toString("hex").toUpperCase();
+// ── Fetch helpers ─────────────────────────────────────────────────────────────
+async function iPost(path, body) {
+    const r = await fetch(`${BASE}${path}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secret: SECRET, ...body })
+    });
+    return r.json();
+}
+async function iGet(path, params = {}) {
+    const qs = new URLSearchParams({ secret: SECRET, ...params }).toString();
+    const r  = await fetch(`${BASE}${path}?${qs}`);
+    return r.json();
+}
+async function ownerApi(method, path, apiKey, body) {
+    const r = await fetch(`${BASE}${path}`, {
+        method, headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+        body: body ? JSON.stringify(body) : undefined
+    });
+    return r.json();
+}
 
-    // ── String encoder → byte array ──────────────────────────────────────────
-    function encodeStr(s) {
-        if (s.length === 0) return '""';
-        const bytes = Array.from(Buffer.from(s, "utf8")).map(b => b.toString());
-        const fn = uid(), r = uid(), i = uid(), S = uid();
-        return `(function() local ${S}={${bytes.join(",")}}; local ${r}="" for ${i}=1,#${S} do ${r}=${r}..string.char(${S}[${i}]) end return ${r} end)()`;
-    }
+// ── Guild config ──────────────────────────────────────────────────────────────
+async function getCfg(guildId) {
+    const { data } = await sb.from("bot_configs").select("*").eq("guild_id", guildId).single();
+    return data;
+}
+async function setCfg(guildId, updates) {
+    const { data } = await sb.from("bot_configs")
+        .upsert({ guild_id: guildId, ...updates, updated_at: new Date().toISOString() }, { onConflict: "guild_id" })
+        .select().single();
+    return data;
+}
 
-    // ── Number encoder → bit32 expression ───────────────────────────────────
-    function encodeNum(n) {
-        if (!Number.isInteger(n) || Math.abs(n) > 2147483647) return String(n);
-        if (n === 0) return "bit32.band(0,0)";
-        const a = Math.floor(Math.random() * 0xFFFF) + 1;
-        const b = n ^ a;
-        const c = Math.floor(Math.random() * 100) + 1;
-        const d = a + c;
-        return `bit32.bxor(${b},bit32.band(${d},${0xFFFF})-${c})`;
-    }
+// ── Duration parser ───────────────────────────────────────────────────────────
+function parseDuration(str) {
+    // "30m", "2h", "1d", "lifetime"
+    if (!str || str === "lifetime" || str === "0") return null;
+    const num = parseInt(str);
+    if (isNaN(num)) return null;
+    const unit = str.replace(/\d+/g, "").toLowerCase();
+    const mul  = unit === "d" ? 86400 : unit === "h" ? 3600 : unit === "m" ? 60 : 3600;
+    return Math.floor(Date.now() / 1000) + num * mul;
+}
 
-    // ── Junk code generator ──────────────────────────────────────────────────
-    function junk() {
-        const v = uid(), w = uid();
-        const variants = [
-            `do local ${v}=math.type and math.type(0) or "integer"; if ${v}=="float" then error() end end`,
-            `do local ${v}={};local ${w}=0;for _=1,0 do ${w}=${w}+1 end;${v}[${w}+1]=true end`,
-            `do local ${v}=string.byte("\\0");if ${v}>255 then error() end end`,
-            `do local ${v}=type(nil)=="nil";if not ${v} then error() end end`,
-            `do local ${v}=select("#");if ${v}>0 then end end`,
-            `do local ${v}=math.floor(0.5);if ${v}>0 then error() end end`,
-        ];
-        return variants[Math.floor(Math.random() * variants.length)];
-    }
+function formatExpiry(k) {
+    if (!k.expires_at) return "♾️ Lifetime";
+    const sec = k.expires_at - Math.floor(Date.now() / 1000);
+    if (sec <= 0) return "⛔ Expired";
+    const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60);
+    if (d > 0) return `⏳ ${d}d ${h}h`;
+    if (h > 0) return `⏳ ${h}h ${m}m`;
+    return `⏳ ${m}m`;
+}
 
-    // ── Variable rename pass ─────────────────────────────────────────────────
-    function renameVars(src) {
-        const map = {};
-        // Match: local name = or local name, name =
-        src = src.replace(/\blocal\s+([a-zA-Z][a-zA-Z0-9_]{2,})\s*=/g, (m, name) => {
-            const skip = ["_G","_ENV","game","workspace","script","shared","plugin","math","table","string","os","io","bit32","utf8","coroutine","debug","package","loadstring","require","pairs","ipairs","next","select","type","error","assert","pcall","xpcall","tostring","tonumber","rawget","rawset","rawequal","rawlen","setmetatable","getmetatable","unpack","print","warn"];
-            if (skip.includes(name)) return m;
-            if (!map[name]) map[name] = uid();
-            return `local ${map[name]} =`;
-        });
-        for (const [orig, renamed] of Object.entries(map)) {
-            src = src.replace(new RegExp(`\\b${orig}\\b`, "g"), renamed);
-        }
-        return src;
-    }
+function isManager(member, cfg) {
+    if (!member) return false;
+    if (member.permissions.has(PermissionFlagsBits.Administrator)) return true;
+    if (cfg?.manager_role_id && member.roles.cache.has(cfg.manager_role_id)) return true;
+    return false;
+}
 
-    // ── String obfuscation pass ──────────────────────────────────────────────
-    function obfStrings(src) {
-        return src.replace(/"((?:[^"\\]|\\.)*)"/g, (m, inner) => {
-            if (inner.length < 2 || inner.length > 80) return m;
-            if (/[\\n\\r\\t\\0]/.test(inner)) return m;
-            if (inner.includes("\\")) return m;
-            if (Math.random() < 0.3) return m; // only obf 70% of strings
-            try { return encodeStr(inner); } catch { return m; }
-        });
-    }
-
-    // ── Number obfuscation pass ──────────────────────────────────────────────
-    function obfNumbers(src) {
-        return src.replace(/\b(\d+)\b/g, (m, n) => {
-            const num = parseInt(n);
-            if (num > 1000000 || Math.random() < 0.35) return m; // skip large/some nums
-            return encodeNum(num);
-        });
-    }
-
-    // ── Table indirection (wrap globals in a lookup table) ───────────────────
-    function addTableIndirection(src) {
-        const tbl = uid();
-        const header = `local ${tbl}={_G=_G,game=game,pairs=pairs,ipairs=ipairs,type=type,tostring=tostring,tonumber=tonumber,math=math,string=string,table=table,bit32=bit32,print=print,warn=warn,error=error,pcall=pcall,select=select};`;
-        return header + "\n" + src;
-    }
-
-    // ── Control flow flattener (wrap top-level in dispatcher) ────────────────
-    function flattenFlow(src) {
-        const state = uid(), dispatch = uid();
-        const steps = src.split(/\n(?=local |function |for |while |if |do |repeat )/)
-            .filter(s => s.trim().length > 0);
-        if (steps.length < 3) return src; // not worth it for short scripts
-        const caseLines = steps.map((s, i) => `if ${state}==${i} then\n${s}\n${state}=${i+1}\n`).join(" else") + " end";
-        return `local ${state}=0\nwhile ${state}<${steps.length} do\n${caseLines}\nend`;
-    }
-
-    // ── Junk insertion pass ──────────────────────────────────────────────────
-    function insertJunk(src) {
-        const lines = src.split("\n");
-        const out = [];
-        for (let i = 0; i < lines.length; i++) {
-            out.push(lines[i]);
-            if (i > 0 && i % 12 === 0 && Math.random() > 0.45) out.push(junk());
-        }
-        return out.join("\n");
-    }
-
-    // ── Final XOR + Base64 wrapper ───────────────────────────────────────────
-    function xorWrap(src) {
-        const key   = crypto.randomBytes(24);
-        const kLen  = key.length;
-        const srcBuf = Buffer.from(src, "utf8");
-        const xored  = Buffer.alloc(srcBuf.length);
-        for (let i = 0; i < srcBuf.length; i++) xored[i] = srcBuf[i] ^ key[i % kLen];
-        const b64    = xored.toString("base64");
-        const kBytes = Array.from(key).map(b => b.toString()).join(",");
-        // Chunk base64 to avoid line-length issues
-        const chunks = [];
-        for (let i = 0; i < b64.length; i += 64) chunks.push(`"${b64.slice(i, i+64)}"`);
-        const chunksStr = `{${chunks.join(",")}}`;
-        const kStr      = `{${kBytes}}`;
-        const S=uid(),r=uid(),o=uid(),i2=uid(),b=uid(),c=uid(),d=uid(),m=uid(),j=uid();
-        // Decode+XOR+execute the payload
-        return `-- Dragon Whitelist Protected Script
-local ${b}="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-local ${m}={}; for ${i2}=1,#${b} do ${m}[${b}:sub(${i2},${i2})]=${i2}-1 end
-local function ${d}(${S})
-  ${S}=${S}:gsub("[^A-Za-z0-9+/=]",""); local ${o}={}
-  for ${i2}=1,#${S},4 do
-    local ${c}=({${m}[${S}:sub(${i2},${i2})] or 0,${m}[${S}:sub(${i2}+1,${i2}+1)] or 0,${m}[${S}:sub(${i2}+2,${i2}+2)] or 0,${m}[${S}:sub(${i2}+3,${i2}+3)] or 0})
-    local ${r}=${c}[1]*262144+${c}[2]*4096+${c}[3]*64+${c}[4]
-    ${o}[#${o}+1]=string.char(math.floor(${r}/65536)%256)
-    if ${S}:sub(${i2}+2,${i2}+2)~="=" then ${o}[#${o}+1]=string.char(math.floor(${r}/256)%256) end
-    if ${S}:sub(${i2}+3,${i2}+3)~="=" then ${o}[#${o}+1]=string.char(${r}%256) end
-  end
-  return table.concat(${o})
-end
-local ${j}=${kStr}; local ${c}=${chunksStr}
-local ${S}=${d}(table.concat(${c})); local ${o}={}
-for ${i2}=1,#${S} do ${o}[${i2}]=string.char(string.byte(${S},${i2})~${j}[((${i2}-1)%#${j})+1]) end
-assert(loadstring(table.concat(${o})))()`;
-    }
-
-    // ── FULL OBFUSCATION PIPELINE ────────────────────────────────────────────
-    return function obfuscate(source, level = "full") {
-        let s = source;
-        if (level === "light") {
-            s = obfStrings(s);
-            s = insertJunk(s);
-            s = xorWrap(s);
-            return s;
-        }
-        // Full pipeline
-        s = renameVars(s);
-        s = obfStrings(s);
-        s = obfNumbers(s);
-        s = insertJunk(s);
-        s = xorWrap(s);
-        return s;
+// ── CONTROL PANEL ─────────────────────────────────────────────────────────────
+function buildPanel(cfg) {
+    const name = cfg?.project_name || "Script";
+    return {
+        embeds: [new EmbedBuilder()
+            .setColor(C.main)
+            .setAuthor({ name: "Lunex Whitelist", iconURL: "https://cdn.discordapp.com/embed/avatars/0.png" })
+            .setTitle(`${name} Control Panel`)
+            .setDescription(
+                `This control panel is for the project: **${name}**\n` +
+                `If you're a buyer, click the buttons below to redeem your key, get the script, or get your role.`
+            )
+            .setFooter({ text: `Lunex • ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}` })
+            .setTimestamp()
+        ],
+        components: [
+            new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId("p_redeem").setLabel("Redeem Key").setEmoji("🔑").setStyle(ButtonStyle.Success),
+                new ButtonBuilder().setCustomId("p_script").setLabel("Get Script").setEmoji("📋").setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId("p_role").setLabel("Get Role").setEmoji("🎭").setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId("p_hwid").setLabel("Reset HWID").setEmoji("⚙️").setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId("p_stats").setLabel("Get Stats").setEmoji("📊").setStyle(ButtonStyle.Secondary)
+            )
+        ]
     };
-})();
-
-// ── Key + API key generators ──────────────────────────────────────────────────
-function genKey(prefix = "DRAG") {
-    const seg = () => crypto.randomBytes(3).toString("hex").toUpperCase();
-    return `${prefix}-${seg()}-${seg()}-${seg()}`;
-}
-function genApiKey() { return crypto.randomBytes(28).toString("hex"); }
-
-// ── Auth middleware ───────────────────────────────────────────────────────────
-async function requireApiKey(req, res, next) {
-    const key = (req.headers["authorization"] || "").replace("Bearer ", "").trim()
-        || req.headers["x-api-key"];
-    if (!key) return res.status(401).json({ error: "No API key" });
-    const { data } = await sb.from("owners").select("*").eq("api_key", key).single();
-    if (!data) return res.status(403).json({ error: "Invalid API key" });
-    if (data.expires_at && Date.now() / 1000 > data.expires_at)
-        return res.status(403).json({ error: "API key expired" });
-    req.owner = data;
-    next();
 }
 
+function genKey(prefix = "LUNEX") {
+    const s = () => crypto.randomBytes(3).toString("hex").toUpperCase();
+    return `${prefix}-${s()}-${s()}-${s()}`;
+}
+function genApiKey() { return crypto.randomBytes(32).toString("hex"); }
+
+// ── CLIENT ─────────────────────────────────────────────────────────────────────
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.DirectMessages
+    ]
+});
+
+// ── SLASH COMMANDS ─────────────────────────────────────────────────────────────
+const commands = [
+    new SlashCommandBuilder().setName("login").setDescription("Link this server to your Lunex account")
+        .addStringOption(o => o.setName("api_key").setDescription("Your API key from the dashboard").setRequired(true))
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+    new SlashCommandBuilder().setName("setup").setDescription("Configure project and roles")
+        .addStringOption(o => o.setName("project_id").setDescription("Project ID from dashboard").setRequired(true))
+        .addRoleOption(o => o.setName("buyer_role").setDescription("Role given to buyers").setRequired(true))
+        .addRoleOption(o => o.setName("manager_role").setDescription("Role that can manage keys"))
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+    new SlashCommandBuilder().setName("panel").setDescription("Post the user control panel in this channel")
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
+
+    new SlashCommandBuilder().setName("create-key").setDescription("Create a key for a user")
+        .addStringOption(o => o.setName("duration").setDescription("Duration e.g. 30m, 2h, 7d, lifetime").setRequired(true))
+        .addUserOption(o => o.setName("user").setDescription("Discord user (optional)"))
+        .addStringOption(o => o.setName("note").setDescription("Note for this key")),
+
+    new SlashCommandBuilder().setName("create-api-key").setDescription("Create an owner API key (access to dashboard)")
+        .addStringOption(o => o.setName("email").setDescription("Email for this account").setRequired(true))
+        .addStringOption(o => o.setName("duration").setDescription("Duration e.g. 30d, 1h, lifetime").setRequired(true))
+        .addStringOption(o => o.setName("plan").setDescription("Plan tier").addChoices(
+            { name: "Starter", value: "starter" },
+            { name: "Pro", value: "pro" },
+            { name: "Elite", value: "elite" }
+        ))
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+    new SlashCommandBuilder().setName("whitelist").setDescription("Whitelist a user (generates a key)")
+        .addUserOption(o => o.setName("user").setDescription("User to whitelist").setRequired(true))
+        .addStringOption(o => o.setName("duration").setDescription("Duration e.g. 7d, 30d, lifetime (default: lifetime)"))
+        .addStringOption(o => o.setName("note").setDescription("Note for this key")),
+
+    new SlashCommandBuilder().setName("revoke").setDescription("Revoke a user's key")
+        .addUserOption(o => o.setName("user").setDescription("User to revoke").setRequired(true)),
+
+    new SlashCommandBuilder().setName("resethwid").setDescription("Reset a user's HWID lock")
+        .addUserOption(o => o.setName("user").setDescription("User to reset").setRequired(true)),
+
+    new SlashCommandBuilder().setName("extend").setDescription("Extend a user's key")
+        .addUserOption(o => o.setName("user").setDescription("User to extend").setRequired(true))
+        .addStringOption(o => o.setName("duration").setDescription("Duration to add e.g. 7d, 24h").setRequired(true)),
+
+    new SlashCommandBuilder().setName("keyinfo").setDescription("View a user's key information")
+        .addUserOption(o => o.setName("user").setDescription("User to look up").setRequired(true)),
+
+    new SlashCommandBuilder().setName("genkeys").setDescription("Generate bulk unused keys")
+        .addIntegerOption(o => o.setName("amount").setDescription("Amount (max 500)").setRequired(true))
+        .addStringOption(o => o.setName("duration").setDescription("Duration e.g. 7d, lifetime"))
+        .addStringOption(o => o.setName("note").setDescription("Note for batch")),
+
+    new SlashCommandBuilder().setName("stats").setDescription("View server whitelist stats")
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+
+    new SlashCommandBuilder().setName("announce").setDescription("DM an announcement to all whitelisted users")
+        .addStringOption(o => o.setName("message").setDescription("Announcement text").setRequired(true))
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+];
+
+async function registerCommands() {
+    const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_BOT_TOKEN);
+    await rest.put(Routes.applicationCommands(process.env.DISCORD_CLIENT_ID), { body: commands.map(c => c.toJSON()) });
+    console.log("[Bot] Commands registered");
+}
+
+// ── INTERACTION ROUTER ────────────────────────────────────────────────────────
+client.on("interactionCreate", async interaction => {
+    try {
+        if (interaction.isChatInputCommand()) await handleSlash(interaction);
+        else if (interaction.isButton())       await handleButton(interaction);
+        else if (interaction.isModalSubmit())  await handleModal(interaction);
+    } catch(e) {
+        console.error("[Bot] Interaction error:", e);
+        const txt = "An error occurred. Try again.";
+        if (interaction.deferred || interaction.replied) {
+            interaction.editReply({ content: txt, embeds: [], components: [] }).catch(() => {});
+        } else {
+            interaction.reply({ content: txt, ephemeral: true }).catch(() => {});
+        }
+    }
+});
+
+// ── REPLY HELPERS ─────────────────────────────────────────────────────────────
+const reply    = (i, desc, col = C.main) => i.editReply({ embeds: [new EmbedBuilder().setColor(col).setDescription(desc)], components: [] });
+const replyEmb = (i, emb) => i.editReply({ embeds: [emb], components: [] });
+
 // ═══════════════════════════════════════════════════════════════════════════════
-// SCRIPT AUTH (users' Lua loaders hit this)
+// SLASH COMMANDS
 // ═══════════════════════════════════════════════════════════════════════════════
-app.get("/v1/auth", authLimiter, async (req, res) => {
-    const { key: userKey, hwid } = req.query;
-    if (!userKey || !hwid)
-        return res.set("Content-Type","text/plain").send(`error("Dragon: Missing key or hwid")`);
+async function handleSlash(i) {
+    const { commandName, guildId } = i;
+    await i.deferReply({ ephemeral: true });
+    const cfg    = await getCfg(guildId);
+    const member = i.member;
 
-    const { data: keyRow } = await sb.from("keys")
-        .select("*, projects(obfuscated_script, ffa, active, name)")
-        .eq("key_string", userKey).single();
-
-    if (!keyRow)
-        return res.set("Content-Type","text/plain").send(`error("Dragon: Invalid key")`);
-    if (!keyRow.active)
-        return res.set("Content-Type","text/plain").send(`error("Dragon: Key revoked - contact support")`);
-    if (keyRow.expires_at && Date.now() / 1000 > keyRow.expires_at)
-        return res.set("Content-Type","text/plain").send(`error("Dragon: Key expired")`);
-
-    // HWID handling
-    if (!keyRow.hwid) {
-        // key_days: start timer on first run
-        const expires_at = keyRow.key_days
-            ? Math.floor(Date.now() / 1000) + keyRow.key_days * 86400
-            : null;
-        await sb.from("keys").update({
-            hwid, total_executions: 1,
-            last_exec: new Date().toISOString(),
-            ...(expires_at ? { expires_at } : {})
-        }).eq("id", keyRow.id);
-    } else if (keyRow.hwid !== hwid) {
-        return res.set("Content-Type","text/plain").send(`error("Dragon: HWID mismatch - run /resethwid in our Discord")`);
-    } else {
-        await sb.from("keys").update({
-            total_executions: (keyRow.total_executions || 0) + 1,
-            last_exec: new Date().toISOString()
-        }).eq("id", keyRow.id);
+    // ── /login ────────────────────────────────────────────────────────────────
+    if (commandName === "login") {
+        if (!member.permissions.has(PermissionFlagsBits.Administrator))
+            return reply(i, "❌ Admins only", C.err);
+        const apiKey = i.options.getString("api_key");
+        const d = await ownerApi("GET", "/v1/account", apiKey);
+        if (!d.success) return reply(i, "❌ Invalid API key — check your dashboard", C.err);
+        await setCfg(guildId, { api_key: apiKey, email: d.account.email, plan: d.account.plan });
+        return replyEmb(i, new EmbedBuilder().setColor(C.ok).setTitle("✅ Server Linked!")
+            .addFields(
+                { name: "Account", value: d.account.email || "—", inline: true },
+                { name: "Plan", value: `\`${d.account.plan || "starter"}\``, inline: true }
+            ).setDescription("Run `/setup` to configure your project and roles."));
     }
 
-    const project = keyRow.projects;
-    if (!project?.active)
-        return res.set("Content-Type","text/plain").send(`error("Dragon: Script is offline")`);
+    if (!cfg?.api_key && !["login"].includes(commandName))
+        return reply(i, "❌ Run `/login <api_key>` first to link this server.", C.err);
 
-    const script = project.obfuscated_script;
-    if (!script || script.trim() === "")
-        return res.set("Content-Type","text/plain").send(`error("Dragon: No script uploaded yet")`);
-
-    res.set("Content-Type", "text/plain");
-    res.send(script);
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// OWNER API — ACCOUNT
-// ═══════════════════════════════════════════════════════════════════════════════
-app.get("/v1/account", apiLimiter, requireApiKey, async (req, res) => {
-    const { data } = await sb.from("owners")
-        .select("email, plan, created_at, expires_at, obfs_used, obfs_reset_at")
-        .eq("id", req.owner.id).single();
-    res.json({ success: true, account: data });
-});
-
-// Bulk generate owner API keys (admin use)
-app.post("/v1/admin/owners", async (req, res) => {
-    if (req.body.admin_secret !== process.env.ADMIN_SECRET)
-        return res.status(403).json({ error: "Forbidden" });
-    const { email, plan = "starter", days } = req.body;
-    if (!email) return res.status(400).json({ error: "Email required" });
-    const apiKey   = genApiKey();
-    const expires  = days ? Math.floor(Date.now() / 1000) + days * 86400 : null;
-    const { data, error } = await sb.from("owners").insert({
-        email, api_key: apiKey, plan, expires_at: expires, obfs_used: 0
-    }).select("id, email, plan").single();
-    if (error) return res.status(500).json({ error: error.message });
-    res.json({ success: true, api_key: apiKey, owner: data });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// OWNER API — PROJECTS
-// ═══════════════════════════════════════════════════════════════════════════════
-app.get("/v1/projects", apiLimiter, requireApiKey, async (req, res) => {
-    const { data } = await sb.from("projects")
-        .select("id, name, ffa, active, script_version, created_at, updated_at")
-        .eq("owner_id", req.owner.id)
-        .order("created_at", { ascending: false });
-    res.json({ success: true, projects: data || [] });
-});
-
-app.post("/v1/projects", apiLimiter, requireApiKey, async (req, res) => {
-    const { name, ffa = false } = req.body;
-    if (!name) return res.status(400).json({ error: "Name required" });
-    // Plan script limit
-    const { count } = await sb.from("projects")
-        .select("*", { count: "exact", head: true }).eq("owner_id", req.owner.id);
-    const scriptLimits = { starter: 2, pro: 8, elite: 18 };
-    if ((count || 0) >= (scriptLimits[req.owner.plan] || 2))
-        return res.status(429).json({ error: `Script limit reached for your plan (${req.owner.plan})` });
-    const { data, error } = await sb.from("projects").insert({
-        owner_id: req.owner.id, name, ffa, active: true, script_version: "0001"
-    }).select().single();
-    if (error) return res.status(500).json({ error: error.message });
-    res.json({ success: true, project: data });
-});
-
-app.delete("/v1/projects/:project_id", apiLimiter, requireApiKey, async (req, res) => {
-    await sb.from("projects").delete()
-        .eq("id", req.params.project_id).eq("owner_id", req.owner.id);
-    res.json({ success: true });
-});
-
-// Upload + obfuscate
-app.post("/v1/projects/:project_id/script", apiLimiter, requireApiKey, async (req, res) => {
-    const { source, level = "full" } = req.body;
-    if (!source) return res.status(400).json({ error: "Source required" });
-    const { data: proj } = await sb.from("projects").select("*")
-        .eq("id", req.params.project_id).eq("owner_id", req.owner.id).single();
-    if (!proj) return res.status(404).json({ error: "Project not found" });
-    // Obfuscation limit check
-    const limits = { starter: 20, pro: 100, elite: 3000 };
-    const lim = limits[req.owner.plan] || 20;
-    if ((req.owner.obfs_used || 0) >= lim)
-        return res.status(429).json({ error: `Obfuscation limit reached (${lim}/month for ${req.owner.plan} plan)` });
-    let obfuscated;
-    try { obfuscated = PrometheusObf(source, level); }
-    catch (e) { return res.status(500).json({ error: "Obfuscation failed: " + e.message }); }
-    const newVer = String(parseInt(proj.script_version || "0000") + 1).padStart(4, "0");
-    await sb.from("projects").update({
-        obfuscated_script: obfuscated, raw_script: source,
-        script_version: newVer, updated_at: new Date().toISOString()
-    }).eq("id", proj.id);
-    await sb.from("owners").update({ obfs_used: (req.owner.obfs_used || 0) + 1 }).eq("id", req.owner.id);
-    const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN
-        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-        : `http://localhost:${process.env.PORT || 3000}`;
-    const loader = `script_key="KEY_HERE"; loadstring(game:HttpGet("${baseUrl}/v1/auth?key="..script_key.."&hwid="..game:GetService("RbxAnalyticsService"):GetClientId()))()`;
-    res.json({ success: true, version: newVer, obfuscated_length: obfuscated.length, loader });
-});
-
-// Toggle active
-app.post("/v1/projects/:project_id/toggle", apiLimiter, requireApiKey, async (req, res) => {
-    const { data: proj } = await sb.from("projects").select("active")
-        .eq("id", req.params.project_id).eq("owner_id", req.owner.id).single();
-    if (!proj) return res.status(404).json({ error: "Not found" });
-    await sb.from("projects").update({ active: !proj.active }).eq("id", req.params.project_id);
-    res.json({ success: true, active: !proj.active });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// OWNER API — KEYS
-// ═══════════════════════════════════════════════════════════════════════════════
-app.get("/v1/projects/:project_id/keys", apiLimiter, requireApiKey, async (req, res) => {
-    const { page = 1, limit = 50, search, filter } = req.query;
-    const off = (page - 1) * Math.min(limit, 200);
-    let q = sb.from("keys").select("*", { count: "exact" })
-        .eq("project_id", req.params.project_id)
-        .order("created_at", { ascending: false })
-        .range(off, off + parseInt(limit) - 1);
-    if (search) q = q.ilike("key_string", `%${search}%`);
-    if (filter === "active")  q = q.eq("active", true);
-    if (filter === "revoked") q = q.eq("active", false);
-    const { data, error, count } = await q;
-    if (error) return res.status(500).json({ error: error.message });
-    res.json({ success: true, keys: data || [], total: count || 0 });
-});
-
-// Generate keys
-app.post("/v1/projects/:project_id/keys", apiLimiter, requireApiKey, async (req, res) => {
-    const { amount = 1, key_days, discord_id, note, prefix = "DRAG" } = req.body;
-    if (amount > 500) return res.status(400).json({ error: "Max 500 per request" });
-    const { count } = await sb.from("keys")
-        .select("*", { count: "exact", head: true })
-        .eq("project_id", req.params.project_id);
-    const userLimits = { starter: 200, pro: 1000, elite: 10000 };
-    const maxU = userLimits[req.owner.plan] || 200;
-    if ((count || 0) + amount > maxU)
-        return res.status(429).json({ error: `User limit reached (${maxU} for ${req.owner.plan} plan)` });
-    const rows = Array.from({ length: amount }, () => ({
-        project_id: req.params.project_id,
-        key_string:       genKey(prefix),
-        discord_id:       discord_id || null,
-        note:             note || null,
-        active:           true,
-        key_days:         key_days || null,
-        expires_at:       null,
-        total_executions: 0,
-        created_at:       new Date().toISOString()
-    }));
-    const { data, error } = await sb.from("keys").insert(rows).select("key_string");
-    if (error) return res.status(500).json({ error: error.message });
-    res.json({ success: true, count: data.length, keys: data.map(k => k.key_string) });
-});
-
-// Bulk revoke
-app.post("/v1/projects/:project_id/keys/bulk-revoke", apiLimiter, requireApiKey, async (req, res) => {
-    const { keys } = req.body; // array of key strings
-    if (!Array.isArray(keys)) return res.status(400).json({ error: "keys must be array" });
-    await sb.from("keys").update({ active: false }).in("key_string", keys).eq("project_id", req.params.project_id);
-    res.json({ success: true, revoked: keys.length });
-});
-
-// Reset HWID
-app.post("/v1/keys/:key_string/resethwid", apiLimiter, requireApiKey, async (req, res) => {
-    const { data } = await sb.from("keys").update({ hwid: null, last_hwid_reset: new Date().toISOString(), updated_at: new Date().toISOString() })
-        .eq("key_string", req.params.key_string).select().single();
-    if (!data) return res.status(404).json({ error: "Key not found" });
-    res.json({ success: true });
-});
-
-// Revoke
-app.post("/v1/keys/:key_string/revoke", apiLimiter, requireApiKey, async (req, res) => {
-    await sb.from("keys").update({ active: false }).eq("key_string", req.params.key_string);
-    res.json({ success: true });
-});
-
-// Unrevoke
-app.post("/v1/keys/:key_string/unrevoke", apiLimiter, requireApiKey, async (req, res) => {
-    await sb.from("keys").update({ active: true }).eq("key_string", req.params.key_string);
-    res.json({ success: true });
-});
-
-// Key info
-app.get("/v1/keys/:key_string", apiLimiter, requireApiKey, async (req, res) => {
-    const { data } = await sb.from("keys").select("*").eq("key_string", req.params.key_string).single();
-    if (!data) return res.status(404).json({ error: "Key not found" });
-    res.json({ success: true, key: data });
-});
-
-// Extend
-app.post("/v1/keys/:key_string/extend", apiLimiter, requireApiKey, async (req, res) => {
-    const { days } = req.body;
-    if (!days || days < 1) return res.status(400).json({ error: "Days required" });
-    const { data } = await sb.from("keys").select("expires_at").eq("key_string", req.params.key_string).single();
-    if (!data) return res.status(404).json({ error: "Key not found" });
-    const base = data.expires_at ?? Math.floor(Date.now() / 1000);
-    const newExpiry = base + days * 86400;
-    await sb.from("keys").update({ expires_at: newExpiry }).eq("key_string", req.params.key_string);
-    res.json({ success: true, new_expiry: newExpiry });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// STATS
-// ═══════════════════════════════════════════════════════════════════════════════
-app.get("/v1/stats", apiLimiter, requireApiKey, async (req, res) => {
-    const { data: projs } = await sb.from("projects").select("id").eq("owner_id", req.owner.id);
-    const ids = (projs || []).map(p => p.id);
-    if (!ids.length) return res.json({ success: true, projects: 0, total_keys: 0, total_executions: 0, plan: req.owner.plan, obfs_used: 0 });
-    const [keyCnt, execs] = await Promise.all([
-        sb.from("keys").select("*", { count: "exact", head: true }).in("project_id", ids),
-        sb.from("keys").select("total_executions").in("project_id", ids)
-    ]);
-    const totalExecs = (execs.data || []).reduce((s, k) => s + (k.total_executions || 0), 0);
-    res.json({ success: true, projects: ids.length, total_keys: keyCnt.count || 0, total_executions: totalExecs, plan: req.owner.plan, obfs_used: req.owner.obfs_used || 0 });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// INTERNAL (Discord bot → server)
-// ═══════════════════════════════════════════════════════════════════════════════
-function checkInternal(req, res) {
-    if (req.body.secret !== process.env.MASTER_SECRET) {
-        res.status(403).json({ error: "Forbidden" });
-        return false;
+    // ── /setup ────────────────────────────────────────────────────────────────
+    if (commandName === "setup") {
+        if (!member.permissions.has(PermissionFlagsBits.Administrator))
+            return reply(i, "❌ Admins only", C.err);
+        const projectId   = i.options.getString("project_id");
+        const buyerRole   = i.options.getRole("buyer_role");
+        const managerRole = i.options.getRole("manager_role");
+        const projs = await ownerApi("GET", "/v1/projects", cfg.api_key);
+        const proj  = projs.projects?.find(p => p.id === projectId);
+        if (!proj) return reply(i, "❌ Project not found — check the ID in your dashboard", C.err);
+        await setCfg(guildId, {
+            project_id:      projectId,
+            project_name:    proj.name,
+            buyer_role_id:   buyerRole.id,
+            manager_role_id: managerRole?.id || null,
+        });
+        return replyEmb(i, new EmbedBuilder().setColor(C.ok).setTitle("✅ Setup Complete")
+            .addFields(
+                { name: "Project", value: proj.name, inline: true },
+                { name: "Buyer Role", value: `<@&${buyerRole.id}>`, inline: true },
+                { name: "Manager Role", value: managerRole ? `<@&${managerRole.id}>` : "Not set", inline: true }
+            ).setDescription("Post a control panel with `/panel`"));
     }
-    return true;
+
+    // ── /panel ────────────────────────────────────────────────────────────────
+    if (commandName === "panel") {
+        if (!isManager(member, cfg)) return reply(i, "❌ No permission", C.err);
+        await i.channel.send(buildPanel(cfg));
+        return reply(i, "✅ Control panel posted!", C.ok);
+    }
+
+    // ── /create-key ───────────────────────────────────────────────────────────
+    if (commandName === "create-key") {
+        if (!isManager(member, cfg)) return reply(i, "❌ No permission", C.err);
+        const durStr  = i.options.getString("duration");
+        const target  = i.options.getUser("user");
+        const note    = i.options.getString("note");
+        const expiry  = parseDuration(durStr);
+        const key     = genKey("LUNEX");
+        const { error } = await sb.from("keys").insert({
+            project_id: cfg.project_id,
+            key_string:  key,
+            discord_id:  target?.id || null,
+            note:        note || null,
+            active:      true,
+            expires_at:  expiry,
+            total_executions: 0,
+            created_at:  new Date().toISOString()
+        });
+        if (error) return reply(i, `❌ ${error.message}`, C.err);
+        // Assign buyer role if target user given
+        if (target && cfg.buyer_role_id) {
+            try {
+                const gm = await i.guild.members.fetch(target.id);
+                await gm.roles.add(cfg.buyer_role_id);
+            } catch {}
+        }
+        // DM the key
+        if (target) {
+            try {
+                await target.send({ embeds: [new EmbedBuilder().setColor(C.ok)
+                    .setTitle("🔑 Your Key")
+                    .setDescription(`Here's your key for **${cfg.project_name || "the script"}**:`)
+                    .addFields(
+                        { name: "Key", value: `\`\`\`${key}\`\`\``, inline: false },
+                        { name: "Expires", value: expiry ? formatExpiry({ expires_at: expiry }) : "♾️ Lifetime", inline: true }
+                    ).setFooter({ text: "HWID locks on your first run — keep this private" })]
+                });
+            } catch {}
+        }
+        return replyEmb(i, new EmbedBuilder().setColor(C.ok).setTitle("🔑 Key Created")
+            .addFields(
+                { name: "Key",     value: `\`${key}\``,                                           inline: false },
+                { name: "Expires", value: expiry ? formatExpiry({ expires_at: expiry }) : "♾️ Lifetime", inline: true },
+                { name: "User",    value: target ? `<@${target.id}>` : "Unassigned",              inline: true },
+                { name: "Note",    value: note || "—",                                             inline: true }
+            ));
+    }
+
+    // ── /create-api-key ───────────────────────────────────────────────────────
+    if (commandName === "create-api-key") {
+        if (!member.permissions.has(PermissionFlagsBits.Administrator))
+            return reply(i, "❌ Admins only", C.err);
+        const email  = i.options.getString("email");
+        const durStr = i.options.getString("duration");
+        const plan   = i.options.getString("plan") || "starter";
+        const apiKey = genApiKey();
+        const expiry = parseDuration(durStr);
+        const { error } = await sb.from("owners").insert({
+            email, api_key: apiKey, plan, obfs_used: 0,
+            expires_at: expiry,
+            created_at: new Date().toISOString()
+        });
+        if (error) return reply(i, `❌ ${error.message || "Failed to create API key"}`, C.err);
+        // DM the key to the command user
+        try {
+            await i.user.send({ embeds: [new EmbedBuilder().setColor(C.ok)
+                .setTitle("🗝️ API Key Created")
+                .setDescription(`Dashboard: ${BASE}`)
+                .addFields(
+                    { name: "API Key",  value: `\`\`\`${apiKey}\`\`\``, inline: false },
+                    { name: "Email",    value: email, inline: true },
+                    { name: "Plan",     value: plan,  inline: true },
+                    { name: "Expires",  value: expiry ? formatExpiry({ expires_at: expiry }) : "♾️ Lifetime", inline: true }
+                ).setFooter({ text: "Log in at " + BASE })] });
+        } catch {}
+        return replyEmb(i, new EmbedBuilder().setColor(C.ok).setTitle("✅ API Key Created")
+            .setDescription(`Account created for **${email}** — API key sent to your DMs.\nPlan: \`${plan}\`\nExpiry: ${expiry ? formatExpiry({ expires_at: expiry }) : "♾️ Lifetime"}`));
+    }
+
+    // ── /whitelist ────────────────────────────────────────────────────────────
+    if (commandName === "whitelist") {
+        if (!isManager(member, cfg)) return reply(i, "❌ No permission", C.err);
+        const target  = i.options.getUser("user");
+        const durStr  = i.options.getString("duration") || "lifetime";
+        const note    = i.options.getString("note");
+        const expiry  = parseDuration(durStr);
+        const result  = await iPost("/internal/whitelist", {
+            project_id: cfg.project_id, discord_id: target.id,
+            note, expires_at: expiry
+        });
+        if (!result.success) return reply(i, `❌ ${result.error}`, C.err);
+        try {
+            const gm = await i.guild.members.fetch(target.id);
+            if (cfg.buyer_role_id) await gm.roles.add(cfg.buyer_role_id);
+        } catch {}
+        try {
+            await target.send({ embeds: [new EmbedBuilder().setColor(C.ok)
+                .setTitle("🔑 You've Been Whitelisted!")
+                .addFields(
+                    { name: "Key", value: `\`\`\`${result.key}\`\`\``, inline: false },
+                    { name: "Expires", value: expiry ? formatExpiry({ expires_at: expiry }) : "♾️ Lifetime", inline: true }
+                ).setFooter({ text: "HWID locks on first run" })] });
+        } catch {}
+        return replyEmb(i, new EmbedBuilder().setColor(C.ok).setTitle("✅ Whitelisted")
+            .setDescription(`<@${target.id}> has been whitelisted.\nKey: \`${result.key}\``)
+            .addFields({ name: "Expires", value: expiry ? formatExpiry({ expires_at: expiry }) : "♾️ Lifetime", inline: true }));
+    }
+
+    // ── /revoke ───────────────────────────────────────────────────────────────
+    if (commandName === "revoke") {
+        if (!isManager(member, cfg)) return reply(i, "❌ No permission", C.err);
+        const target = i.options.getUser("user");
+        await iPost("/internal/revoke", { discord_id: target.id });
+        try { const gm = await i.guild.members.fetch(target.id); if (cfg.buyer_role_id) await gm.roles.remove(cfg.buyer_role_id).catch(()=>{}); } catch {}
+        try { await target.send({ embeds: [new EmbedBuilder().setColor(C.err).setTitle("🚫 Access Revoked").setDescription("Your key has been revoked. Contact support.")] }); } catch {}
+        return reply(i, `✅ Revoked access for <@${target.id}>`, C.ok);
+    }
+
+    // ── /resethwid ────────────────────────────────────────────────────────────
+    if (commandName === "resethwid") {
+        if (!isManager(member, cfg)) return reply(i, "❌ No permission", C.err);
+        const target = i.options.getUser("user");
+        const result = await iPost("/internal/resethwid", { discord_id: target.id });
+        if (!result.success) return reply(i, `❌ No key found for this user`, C.err);
+        try { await target.send({ embeds: [new EmbedBuilder().setColor(C.info).setTitle("🔓 HWID Reset").setDescription("Your HWID has been cleared. Run the script again to lock your new device.")] }); } catch {}
+        return reply(i, `✅ HWID reset for <@${target.id}>`, C.ok);
+    }
+
+    // ── /extend ───────────────────────────────────────────────────────────────
+    if (commandName === "extend") {
+        if (!isManager(member, cfg)) return reply(i, "❌ No permission", C.err);
+        const target = i.options.getUser("user");
+        const durStr = i.options.getString("duration");
+        const info   = await iGet("/internal/keyinfo", { discord_id: target.id });
+        if (!info.keys?.length) return reply(i, "❌ No key found for this user", C.err);
+        const k = info.keys[0];
+        const addSecs = (() => {
+            const n = parseInt(durStr); const u = durStr.replace(/\d+/g,"").toLowerCase();
+            return n * (u==="d"?86400:u==="h"?3600:u==="m"?60:3600);
+        })();
+        const base   = k.expires_at ?? Math.floor(Date.now()/1000);
+        const newExp = base + addSecs;
+        await sb.from("keys").update({ expires_at: newExp }).eq("key_string", k.key_string);
+        try { await target.send({ embeds: [new EmbedBuilder().setColor(C.ok).setTitle("✅ Key Extended").setDescription(`Extended by **${durStr}**. New expiry: ${formatExpiry({ expires_at: newExp })}`)] }); } catch {}
+        return reply(i, `✅ Extended <@${target.id}>'s key by ${durStr}. New expiry: ${formatExpiry({ expires_at: newExp })}`, C.ok);
+    }
+
+    // ── /keyinfo ──────────────────────────────────────────────────────────────
+    if (commandName === "keyinfo") {
+        if (!isManager(member, cfg)) return reply(i, "❌ No permission", C.err);
+        const target = i.options.getUser("user");
+        const result = await iGet("/internal/keyinfo", { discord_id: target.id });
+        if (!result.keys?.length) return reply(i, "❌ No key found for this user", C.err);
+        const k = result.keys[0];
+        return replyEmb(i, new EmbedBuilder().setColor(k.active ? C.main : C.err)
+            .setTitle(`🔑 Key Info — ${target.username}`)
+            .setThumbnail(target.displayAvatarURL())
+            .addFields(
+                { name: "Key",        value: `\`${k.key_string}\``,                               inline: false },
+                { name: "Status",     value: k.active ? "✅ Active" : "❌ Revoked",                inline: true  },
+                { name: "Expires",    value: formatExpiry(k),                                       inline: true  },
+                { name: "HWID",       value: k.hwid ? "🔒 Locked" : "🔓 Unlocked",                inline: true  },
+                { name: "Total Runs", value: String(k.total_executions || 0),                       inline: true  },
+                { name: "Last Run",   value: k.last_exec ? `<t:${Math.floor(new Date(k.last_exec).getTime()/1000)}:R>` : "Never", inline: true },
+                { name: "Note",       value: k.note || "—",                                         inline: true  }
+            ).setTimestamp());
+    }
+
+    // ── /genkeys ──────────────────────────────────────────────────────────────
+    if (commandName === "genkeys") {
+        if (!isManager(member, cfg)) return reply(i, "❌ No permission", C.err);
+        const amount = Math.min(i.options.getInteger("amount"), 500);
+        const durStr = i.options.getString("duration") || "lifetime";
+        const note   = i.options.getString("note");
+        const expiry = parseDuration(durStr);
+        const result = await ownerApi("POST", `/v1/projects/${cfg.project_id}/keys`, cfg.api_key, {
+            amount, note, expires_at: expiry
+        });
+        if (!result.success) return reply(i, `❌ ${result.error}`, C.err);
+        return i.editReply({
+            embeds: [new EmbedBuilder().setColor(C.ok).setTitle("🗝️ Keys Generated")
+                .setDescription(`Generated **${result.count}** keys${expiry ? ` (${durStr})` : " (Lifetime)"}`)],
+            files: [{ attachment: Buffer.from(result.keys.join("\n"), "utf8"), name: `keys_${Date.now()}.txt` }]
+        });
+    }
+
+    // ── /stats ────────────────────────────────────────────────────────────────
+    if (commandName === "stats") {
+        if (!isManager(member, cfg)) return reply(i, "❌ No permission", C.err);
+        const data = await ownerApi("GET", "/v1/stats", cfg.api_key);
+        if (!data.success) return reply(i, `❌ ${data.error}`, C.err);
+        const { data: allKeys } = await sb.from("keys").select("active,expires_at").eq("project_id", cfg.project_id);
+        const now     = Math.floor(Date.now()/1000);
+        const active  = (allKeys||[]).filter(k => k.active && (!k.expires_at || k.expires_at > now)).length;
+        const expired = (allKeys||[]).filter(k => k.expires_at && k.expires_at <= now).length;
+        const revoked = (allKeys||[]).filter(k => !k.active).length;
+        return replyEmb(i, new EmbedBuilder().setColor(C.main).setTitle("📊 Whitelist Stats")
+            .addFields(
+                { name: "🟢 Active",       value: String(active),  inline: true },
+                { name: "⛔ Expired",       value: String(expired), inline: true },
+                { name: "🔴 Revoked",       value: String(revoked), inline: true },
+                { name: "⚡ Total Runs",    value: String(data.total_executions), inline: true },
+                { name: "🔒 Obfs Used",    value: String(data.obfs_used||0),     inline: true },
+                { name: "💎 Plan",          value: `\`${data.plan||"starter"}\``,  inline: true }
+            ).setTimestamp());
+    }
+
+    // ── /announce ─────────────────────────────────────────────────────────────
+    if (commandName === "announce") {
+        if (!isManager(member, cfg)) return reply(i, "❌ No permission", C.err);
+        const msg  = i.options.getString("message");
+        const { data: keys } = await sb.from("keys").select("discord_id").eq("project_id", cfg.project_id).eq("active", true).not("discord_id","is",null);
+        let sent = 0;
+        for (const k of keys || []) {
+            try {
+                const u = await client.users.fetch(k.discord_id);
+                await u.send({ embeds: [new EmbedBuilder().setColor(C.warn).setTitle("📢 Announcement")
+                    .setDescription(msg).setFooter({ text: cfg.project_name || "Lunex" }).setTimestamp()] });
+                sent++;
+            } catch {}
+            await new Promise(r => setTimeout(r, 300));
+        }
+        return reply(i, `✅ Announced to ${sent}/${keys?.length||0} users`, C.ok);
+    }
 }
 
-app.post("/internal/whitelist", async (req, res) => {
-    if (!checkInternal(req, res)) return;
-    const { project_id, discord_id, days, note } = req.body;
-    const key        = genKey();
-    const expires_at = days ? Math.floor(Date.now() / 1000) + days * 86400 : null;
-    const { data, error } = await sb.from("keys").insert({
-        project_id, key_string: key, discord_id, note: note || null,
-        active: true, key_days: days || null, expires_at, total_executions: 0,
-        created_at: new Date().toISOString()
-    }).select().single();
-    if (error) return res.status(500).json({ error: error.message });
-    res.json({ success: true, key: data.key_string });
-});
+// ═══════════════════════════════════════════════════════════════════════════════
+// BUTTON HANDLER
+// ═══════════════════════════════════════════════════════════════════════════════
+async function handleButton(i) {
+    const { customId, guildId, user } = i;
+    const cfg = await getCfg(guildId);
 
-app.post("/internal/resethwid", async (req, res) => {
-    if (!checkInternal(req, res)) return;
-    const { discord_id } = req.body;
-    const { data } = await sb.from("keys").update({ hwid: null, last_hwid_reset: new Date().toISOString() })
-        .eq("discord_id", discord_id).select("key_string");
-    res.json({ success: true, updated: data?.length || 0 });
-});
+    if (customId === "p_redeem") {
+        return i.showModal(new ModalBuilder().setCustomId("m_redeem").setTitle("Redeem a key")
+            .addComponents(new ActionRowBuilder().addComponents(
+                new TextInputBuilder().setCustomId("key_val")
+                    .setLabel("Enter script key below:")
+                    .setPlaceholder("LUNEX-XXXXXX-XXXXXX-XXXXXX")
+                    .setStyle(TextInputStyle.Short).setRequired(true).setMinLength(10).setMaxLength(80)
+            )));
+    }
 
-app.post("/internal/revoke", async (req, res) => {
-    if (!checkInternal(req, res)) return;
-    await sb.from("keys").update({ active: false }).eq("discord_id", req.body.discord_id);
-    res.json({ success: true });
-});
+    await i.deferReply({ ephemeral: true });
 
-app.get("/internal/keyinfo", async (req, res) => {
-    if (req.query.secret !== process.env.MASTER_SECRET) return res.status(403).json({ error: "Forbidden" });
-    const { data } = await sb.from("keys").select("*").eq("discord_id", req.query.discord_id);
-    res.json({ success: true, keys: data || [] });
-});
+    if (customId === "p_script") {
+        const info = await iGet("/internal/keyinfo", { discord_id: user.id });
+        if (!info.keys?.length) return reply(i, "❌ You don't have a key — click **Redeem Key** first.", C.err);
+        const k = info.keys[0];
+        if (!k.active) return reply(i, "❌ Your key has been revoked. Contact support.", C.err);
+        const loader = `script_key="${k.key_string}";\nloadstring(game:HttpGet("${BASE}/v1/auth?key="..script_key.."&hwid="..game:GetService("RbxAnalyticsService"):GetClientId()))()`;
+        try {
+            await user.send({ embeds: [new EmbedBuilder().setColor(C.main).setTitle("📋 Your Script Loader")
+                .addFields(
+                    { name: "Loader", value: `\`\`\`lua\n${loader}\n\`\`\`` },
+                    { name: "Expires", value: formatExpiry(k), inline: true },
+                    { name: "Total Runs", value: String(k.total_executions||0), inline: true }
+                ).setFooter({ text: "Keep this private — HWID locks on first run" })] });
+            return reply(i, "✅ Loader sent to your DMs!", C.ok);
+        } catch {
+            return reply(i, "❌ Couldn't DM you — enable DMs from server members in your privacy settings.", C.err);
+        }
+    }
+
+    if (customId === "p_role") {
+        if (!cfg?.buyer_role_id) return reply(i, "❌ No buyer role configured", C.err);
+        const info = await iGet("/internal/keyinfo", { discord_id: user.id });
+        if (!info.keys?.length) return reply(i, "❌ No key found — redeem a key first.", C.err);
+        const k = info.keys[0];
+        if (!k.active || (k.expires_at && k.expires_at <= Math.floor(Date.now()/1000)))
+            return reply(i, "❌ Key expired or revoked.", C.err);
+        try {
+            const gm = await i.guild.members.fetch(user.id);
+            if (gm.roles.cache.has(cfg.buyer_role_id)) return reply(i, "✅ You already have the buyer role!", C.ok);
+            await gm.roles.add(cfg.buyer_role_id);
+            return reply(i, `✅ You've been given <@&${cfg.buyer_role_id}>!`, C.ok);
+        } catch(e) {
+            return reply(i, "❌ Failed to assign role — check bot permissions.", C.err);
+        }
+    }
+
+    if (customId === "p_hwid") {
+        const info = await iGet("/internal/keyinfo", { discord_id: user.id });
+        if (!info.keys?.length) return reply(i, "❌ No key found.", C.err);
+        const k = info.keys[0];
+        await sb.from("keys").update({ hwid: null, last_hwid_reset: new Date().toISOString() }).eq("key_string", k.key_string);
+        return i.editReply({ embeds: [new EmbedBuilder().setColor(C.ok).setTitle("🔓 HWID Reset")
+            .setDescription("Your HWID has been cleared. Run the script again to lock your new device.")], components: [] });
+    }
+
+    if (customId === "p_stats") {
+        const info = await iGet("/internal/keyinfo", { discord_id: user.id });
+        if (!info.keys?.length) return reply(i, "❌ No key found. Redeem a key first.", C.err);
+        const k = info.keys[0];
+        return i.editReply({ embeds: [new EmbedBuilder().setColor(C.main).setTitle("📊 Your Stats")
+            .addFields(
+                { name: "Status",     value: k.active ? "✅ Active" : "❌ Revoked",           inline: true },
+                { name: "Expires",    value: formatExpiry(k),                                   inline: true },
+                { name: "HWID",       value: k.hwid ? "🔒 Locked" : "🔓 Unlocked",            inline: true },
+                { name: "Total Runs", value: String(k.total_executions||0),                     inline: true },
+                { name: "Last Run",   value: k.last_exec ? `<t:${Math.floor(new Date(k.last_exec).getTime()/1000)}:R>` : "Never", inline: true },
+                { name: "Key",        value: `\`${k.key_string.slice(0,18)}...\``,             inline: true }
+            ).setFooter({ text: cfg?.project_name || "Lunex" }).setTimestamp()], components: [] });
+    }
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// CRON JOBS
+// MODAL HANDLER
 // ═══════════════════════════════════════════════════════════════════════════════
-// Expire keys daily
-cron.schedule("0 3 * * *", async () => {
-    const now = Math.floor(Date.now() / 1000);
-    const { count } = await sb.from("keys").update({ active: false })
-        .lt("expires_at", now).eq("active", true);
-    console.log(`[CRON] Expired ${count || 0} keys`);
-});
-// Reset monthly obfuscation counters
-cron.schedule("0 0 1 * *", async () => {
-    await sb.from("owners").update({ obfs_used: 0, obfs_reset_at: new Date().toISOString() });
-    console.log("[CRON] Obfuscation counters reset");
+async function handleModal(i) {
+    const { customId, guildId, user } = i;
+    const cfg = await getCfg(guildId);
+
+    if (customId === "m_redeem") {
+        await i.deferReply({ ephemeral: true });
+        const keyStr = i.fields.getTextInputValue("key_val").trim();
+        const { data: keyRow } = await sb.from("keys").select("*").eq("key_string", keyStr).single();
+        if (!keyRow)
+            return reply(i, "❌ Invalid key — double-check and try again.", C.err);
+        if (!keyRow.active)
+            return reply(i, "❌ This key has been revoked.", C.err);
+        if (keyRow.expires_at && keyRow.expires_at <= Math.floor(Date.now()/1000))
+            return reply(i, "❌ This key has expired.", C.err);
+        if (keyRow.discord_id && keyRow.discord_id !== user.id)
+            return reply(i, "❌ This key is already claimed by another account.", C.err);
+        // Link discord_id
+        if (!keyRow.discord_id)
+            await sb.from("keys").update({ discord_id: user.id }).eq("key_string", keyStr);
+        // Give buyer role
+        try {
+            if (cfg?.buyer_role_id) {
+                const gm = await i.guild.members.fetch(user.id);
+                await gm.roles.add(cfg.buyer_role_id);
+            }
+        } catch {}
+        return i.editReply({ embeds: [new EmbedBuilder().setColor(C.ok).setTitle("✅ Key Redeemed!")
+            .setDescription("Your key has been linked. Use **Get Script** to get your loader, or **Get Role** to get your buyer role.")
+            .addFields({ name: "Expires", value: formatExpiry(keyRow), inline: true })
+            .setFooter({ text: "Do NOT share your key" })], components: [] });
+    }
+}
+
+// ── READY ─────────────────────────────────────────────────────────────────────
+client.once("ready", async () => {
+    console.log(`[Bot] Ready as ${client.user.tag}`);
+    client.user.setActivity("Lunex Whitelist", { type: ActivityType.Watching });
+    await registerCommands();
 });
 
-app.get("/", (req, res) => res.sendFile(path.join(__dirname, "dashboard", "index.html")));
+// ── Auto-reconnect ────────────────────────────────────────────────────────────
+client.on("disconnect", () => {
+    console.log("[Bot] Disconnected — attempting reconnect...");
+    setTimeout(() => client.login(process.env.DISCORD_BOT_TOKEN), 5000);
+});
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`[Dragon Whitelist] Port ${PORT}`));
+client.on("error", err => {
+    console.error("[Bot] Client error:", err);
+});
+
+client.login(process.env.DISCORD_BOT_TOKEN).catch(err => {
+    console.error("[Bot] Login failed:", err);
+    setTimeout(() => client.login(process.env.DISCORD_BOT_TOKEN), 10000);
+});
