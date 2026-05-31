@@ -10,6 +10,7 @@ const cron        = require("node-cron");
 const app = express();
 const sb  = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
+app.set("trust proxy", 1); // Fix for Railway/reverse proxy
 app.use(cors());
 app.use(express.json({ limit: "8mb" }));
 app.use(express.static(path.join(__dirname, "dashboard")));
