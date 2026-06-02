@@ -16,6 +16,7 @@
     "express-rate-limit": "^7.1.5",
     "multer": "^1.4.5-lts.1",
     "node-cron": "^3.0.3",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "wasmoon": "^1.16.0"
   }
 }
